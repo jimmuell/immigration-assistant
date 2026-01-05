@@ -1,0 +1,321 @@
+{
+  "name": "Final Asylum Flow",
+  "description": "",
+  "nodes": [
+    {
+      "id": "43164797-4164-49b1-ba96-f1bf4136a3dc",
+      "type": "start",
+      "question": "Start",
+      "options": null,
+      "yesLabel": null,
+      "noLabel": null,
+      "position": {
+        "x": -910.466946493908,
+        "y": -352.300713099337
+      },
+      "thankYouTitle": null,
+      "thankYouMessage": null,
+      "legalDisclaimer": null,
+      "additionalInfoPrompt": null,
+      "referencedFlowId": null,
+      "formTitle": null,
+      "formDescription": null
+    },
+    {
+      "id": "daf4281b-b9bf-40cf-b804-393ef125cefa",
+      "type": "yes-no",
+      "question": "Great! This legal service is for people in the U.S. who fear persecution or harm if they return to their home country. Does this apply to you?",
+      "options": null,
+      "yesLabel": null,
+      "noLabel": null,
+      "position": {
+        "x": -542.252110083109,
+        "y": -406.831797792734
+      },
+      "thankYouTitle": null,
+      "thankYouMessage": null,
+      "legalDisclaimer": null,
+      "additionalInfoPrompt": null,
+      "referencedFlowId": null,
+      "formTitle": null,
+      "formDescription": null
+    },
+    {
+      "id": "80cdeba5-38c5-4633-9065-213a08384b43",
+      "type": "text",
+      "question": "The U.S. asylum process is for individuals who are physically in the United States and fear returning to their home country due to persecution or a well-founded fear of persecution. \n\nBased on your answer, you may not be eligible to apply for asylum. We can still try to help! Your information can be routed to an immigration attorney in our network who may be able to advise you on other possible immigration options.\n",
+      "options": null,
+      "yesLabel": null,
+      "noLabel": null,
+      "position": {
+        "x": -540.817405192378,
+        "y": -151.454327242633
+      },
+      "thankYouTitle": null,
+      "thankYouMessage": null,
+      "legalDisclaimer": null,
+      "additionalInfoPrompt": null,
+      "referencedFlowId": null,
+      "formTitle": null,
+      "formDescription": null
+    },
+    {
+      "id": "1230adf5-c7c6-4246-9df9-abd678250a1f",
+      "type": "yes-no",
+      "question": "When you entered the U.S., were you inspected by a U.S. border officer?",
+      "options": null,
+      "yesLabel": "I was inspected and admitted ",
+      "noLabel": "I entered without being inspected ",
+      "position": {
+        "x": -55.8871521253319,
+        "y": -414.722674691754
+      },
+      "thankYouTitle": null,
+      "thankYouMessage": null,
+      "legalDisclaimer": null,
+      "additionalInfoPrompt": null,
+      "referencedFlowId": null,
+      "formTitle": null,
+      "formDescription": null
+    },
+    {
+      "id": "4ffb61a3-eb1b-4e46-86a7-cc97c29a4e3f",
+      "type": "form",
+      "question": "New Question",
+      "options": null,
+      "yesLabel": null,
+      "noLabel": null,
+      "position": {
+        "x": 314.352578153474,
+        "y": -543.22178093516
+      },
+      "thankYouTitle": null,
+      "thankYouMessage": null,
+      "legalDisclaimer": null,
+      "additionalInfoPrompt": null,
+      "referencedFlowId": null,
+      "formTitle": "Briefly describe how you entered the U.S. (e.g. tourist visa, student visa, humanitarian parole, employment visa, J-1 visa or another type of visa)",
+      "formDescription": null,
+      "formFields": [
+        {
+          "id": "1",
+          "type": "text",
+          "label": "Text Field",
+          "placeholder": "",
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "db582f5b-5d5c-4b3a-9f90-bc7600a7d180",
+      "type": "yes-no",
+      "question": "Are you afraid to return back to your home country? If yes, can you please explain why. ",
+      "options": null,
+      "yesLabel": null,
+      "noLabel": null,
+      "position": {
+        "x": 686.991749692267,
+        "y": -408.571662719955
+      },
+      "thankYouTitle": null,
+      "thankYouMessage": null,
+      "legalDisclaimer": null,
+      "additionalInfoPrompt": null,
+      "referencedFlowId": null,
+      "formTitle": null,
+      "formDescription": null
+    },
+    {
+      "id": "79ebabe2-8181-4b11-b34c-3f807e2d0bb0",
+      "type": "text",
+      "question": "The U.S. asylum process is for individuals who are physically in the United States and fear returning to their home country due to persecution or a well-founded fear of persecution. \n\nBased on your answer, you may not be eligible to apply for asylum. We can still try to help! Your information can be routed to an immigration attorney in our network who may be able to advise you on other possible immigration options.\n",
+      "options": null,
+      "yesLabel": null,
+      "noLabel": null,
+      "position": {
+        "x": 686.715722346165,
+        "y": -218.70818633815
+      },
+      "thankYouTitle": null,
+      "thankYouMessage": null,
+      "legalDisclaimer": null,
+      "additionalInfoPrompt": null,
+      "referencedFlowId": null,
+      "formTitle": null,
+      "formDescription": null
+    },
+    {
+      "id": "ec7f1da3-5fd5-4c84-a7bc-f647c757cf2e",
+      "type": "form",
+      "question": "New Question",
+      "options": null,
+      "yesLabel": null,
+      "noLabel": null,
+      "position": {
+        "x": 1056.15000724555,
+        "y": -473.083080632325
+      },
+      "thankYouTitle": null,
+      "thankYouMessage": null,
+      "legalDisclaimer": null,
+      "additionalInfoPrompt": null,
+      "referencedFlowId": null,
+      "formTitle": "If yes, please explain why you are afraid to return to your home country. ",
+      "formDescription": "For example: threats, violence, persecution, or other harm. ",
+      "formFields": [
+        {
+          "id": "1",
+          "type": "text",
+          "label": "Text Field",
+          "placeholder": "",
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "60e48409-cc0b-47b8-851a-a2e52947ba02",
+      "type": "yes-no",
+      "question": "Have you ever been placed in immigration court or faced removal (deportation) proceedings? ",
+      "options": null,
+      "yesLabel": null,
+      "noLabel": null,
+      "position": {
+        "x": 1066.09108830393,
+        "y": -312.037567486619
+      },
+      "thankYouTitle": null,
+      "thankYouMessage": null,
+      "legalDisclaimer": null,
+      "additionalInfoPrompt": null,
+      "referencedFlowId": null,
+      "formTitle": null,
+      "formDescription": null
+    },
+    {
+      "id": "08b82547-f4ca-4a1f-8ed2-19eb3c644695",
+      "type": "end",
+      "question": "End",
+      "options": null,
+      "yesLabel": null,
+      "noLabel": null,
+      "position": {
+        "x": 1433.985034209,
+        "y": -381.625134895257
+      },
+      "thankYouTitle": null,
+      "thankYouMessage": null,
+      "legalDisclaimer": null,
+      "additionalInfoPrompt": null,
+      "referencedFlowId": null,
+      "formTitle": null,
+      "formDescription": null
+    },
+    {
+      "id": "998d9eca-00ba-4e76-914d-32dfbf95b5f8",
+      "type": "form",
+      "question": "New Question",
+      "options": null,
+      "yesLabel": null,
+      "noLabel": null,
+      "position": {
+        "x": 322.759043857546,
+        "y": -345.268703937479
+      },
+      "thankYouTitle": null,
+      "thankYouMessage": null,
+      "legalDisclaimer": null,
+      "additionalInfoPrompt": null,
+      "referencedFlowId": null,
+      "formTitle": "What date did you enter or arrive in the U.S.?",
+      "formDescription": "Please provide the date or your best guess. If you don't know the date, an approximate date is fine.",
+      "formFields": [
+        {
+          "id": "entry_date",
+          "type": "date",
+          "label": "Entry Date",
+          "placeholder": "MM/DD/YYYY",
+          "required": true
+        }
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "9724e5a6-b4d0-4516-8ed6-57d7483a8541",
+      "sourceNodeId": "daf4281b-b9bf-40cf-b804-393ef125cefa",
+      "targetNodeId": "80cdeba5-38c5-4633-9065-213a08384b43",
+      "condition": "no",
+      "label": "No"
+    },
+    {
+      "id": "daa7b7cf-aae8-4bb1-bb13-83cd0db658df",
+      "sourceNodeId": "daf4281b-b9bf-40cf-b804-393ef125cefa",
+      "targetNodeId": "1230adf5-c7c6-4246-9df9-abd678250a1f",
+      "condition": "any"
+    },
+    {
+      "id": "257a742c-8ece-472e-ac90-53c951bc7433",
+      "sourceNodeId": "43164797-4164-49b1-ba96-f1bf4136a3dc",
+      "targetNodeId": "daf4281b-b9bf-40cf-b804-393ef125cefa",
+      "condition": "any"
+    },
+    {
+      "id": "0025f9b3-d281-48e7-93f2-0348344817f2",
+      "sourceNodeId": "1230adf5-c7c6-4246-9df9-abd678250a1f",
+      "targetNodeId": "4ffb61a3-eb1b-4e46-86a7-cc97c29a4e3f",
+      "condition": "yes",
+      "label": "I was inspected and admitted "
+    },
+    {
+      "id": "11ea8a8f-85d8-42c1-8dab-9f575ac0ca5b",
+      "sourceNodeId": "db582f5b-5d5c-4b3a-9f90-bc7600a7d180",
+      "targetNodeId": "79ebabe2-8181-4b11-b34c-3f807e2d0bb0",
+      "condition": "no",
+      "label": "No"
+    },
+    {
+      "id": "fed99064-04a2-4369-a98c-fe1bc1545678",
+      "sourceNodeId": "db582f5b-5d5c-4b3a-9f90-bc7600a7d180",
+      "targetNodeId": "ec7f1da3-5fd5-4c84-a7bc-f647c757cf2e",
+      "condition": "yes",
+      "label": "Yes"
+    },
+    {
+      "id": "696d06cd-80ce-4c4a-8a72-5eaed00f5971",
+      "sourceNodeId": "db582f5b-5d5c-4b3a-9f90-bc7600a7d180",
+      "targetNodeId": "60e48409-cc0b-47b8-851a-a2e52947ba02",
+      "condition": "any"
+    },
+    {
+      "id": "642b8f12-5d14-4065-895f-d5b4d7eb00e0",
+      "sourceNodeId": "60e48409-cc0b-47b8-851a-a2e52947ba02",
+      "targetNodeId": "08b82547-f4ca-4a1f-8ed2-19eb3c644695",
+      "condition": "any"
+    },
+    {
+      "id": "b8ccbc31-589c-4aee-8cb5-62ac5a7a31da",
+      "sourceNodeId": "ec7f1da3-5fd5-4c84-a7bc-f647c757cf2e",
+      "targetNodeId": "60e48409-cc0b-47b8-851a-a2e52947ba02",
+      "condition": "any"
+    },
+    {
+      "id": "a3879dfe-8114-43a3-889e-f3e41f760351",
+      "sourceNodeId": "998d9eca-00ba-4e76-914d-32dfbf95b5f8",
+      "targetNodeId": "db582f5b-5d5c-4b3a-9f90-bc7600a7d180",
+      "condition": "any"
+    },
+    {
+      "id": "8e32eb9c-30ab-494f-9b0d-91d4f4b6b547",
+      "sourceNodeId": "1230adf5-c7c6-4246-9df9-abd678250a1f",
+      "targetNodeId": "998d9eca-00ba-4e76-914d-32dfbf95b5f8",
+      "condition": "no",
+      "label": "I entered without being inspected "
+    },
+    {
+      "id": "d0fb68df-b950-4f94-a87f-134b95a5fba6",
+      "sourceNodeId": "4ffb61a3-eb1b-4e46-86a7-cc97c29a4e3f",
+      "targetNodeId": "998d9eca-00ba-4e76-914d-32dfbf95b5f8",
+      "condition": "any"
+    }
+  ]
+}

@@ -1,4 +1,48 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Immigration Assistant
+
+A multi-tenant SaaS platform for immigration screening and attorney matching built with Next.js.
+
+## Project Overview
+
+The Immigration Assistant helps users understand U.S. immigration options through guided screening flows, connects them with qualified attorneys, and streamlines the attorney-client workflow.
+
+### Key Features
+
+- 🏢 **Multi-tenant Architecture**: Separate organizations with data isolation
+- 👥 **Role-based Access Control**: 5 user roles (client, attorney, staff, org_admin, super_admin)
+- 📋 **Dynamic Flow System**: Configurable screening questionnaires
+- 💬 **AI Chat Integration**: Gemini-powered immigration guidance
+- 📊 **Admin Dashboards**: Organization and platform-wide analytics
+- 🔐 **Secure Authentication**: NextAuth with role-based permissions
+
+### User Roles
+
+- **Client**: Complete screenings, receive attorney quotes
+- **Attorney**: Manage cases, provide quotes, view client details
+- **Staff**: Support attorneys with case management
+- **Organization Admin**: Manage organization users and settings
+- **Super Admin**: Platform administration and flow management
+
+## Important: Flow Management Policy
+
+⚠️ **Flow management operations (create, edit, delete, activate) are restricted to Super Admins only.**
+
+- **Organization Admins** and **Staff** have read-only access to flows
+- For flow creation or modification requests, contact your Super Admin or support
+- This ensures platform consistency, quality control, and centralized governance
+
+See [Flow Management Permissions](./docs/FLOW_MANAGEMENT_PERMISSIONS.md) for the complete policy.
+
+## Documentation
+
+📚 **Key Documentation Files**:
+
+- [Setup Guide](./src/docs/SETUP.md) - Development environment setup
+- [Super Admin Implementation](./src/docs/SUPER_ADMIN_IMPLEMENTATION.md) - Multi-tenancy and admin features
+- [Role-Based Authentication](./src/docs/ROLE_AUTH.md) - User roles and permissions
+- [Flow Management Permissions](./docs/FLOW_MANAGEMENT_PERMISSIONS.md) - ⭐ **Flow management access policy**
+- [Flow JSON Specification](./src/docs/FLOW_JSON_SPECIFICATION.md) - How to create screening flows
+- [Testing Documentation](./docs/testing/README.md) - Comprehensive test plans
 
 ## Getting Started
 
