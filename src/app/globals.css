@@ -66,3 +66,27 @@ body {
   font-family: Arial, Helvetica, sans-serif;
   min-height: 100vh;
 }
+
+/* Ensure dark backgrounds always have white text for buttons and interactive elements */
+button[class*="bg-blue-6"],
+button[class*="bg-blue-7"],
+button[class*="bg-blue-8"],
+button[class*="bg-blue-9"],
+button[class*="bg-orange-6"],
+button[class*="bg-orange-7"],
+button[class*="bg-green-6"],
+button[class*="bg-green-7"],
+button[class*="bg-purple-6"],
+button[class*="bg-purple-7"] {
+  color: white !important;
+}
+
+/* Ensure buttons with dark backgrounds in hover states have white text */
+button:hover[class*="hover:bg-blue-6"],
+button:hover[class*="hover:bg-blue-7"],
+button:hover[class*="hover:bg-orange-6"],
+button:hover[class*="hover:bg-orange-7"],
+button:hover[class*="hover:bg-green-6"],
+button:hover[class*="hover:bg-green-7"] {
+  color: white !important;
+}

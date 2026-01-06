@@ -31,18 +31,20 @@ export async function assignScreeningToAttorney(screeningId: string, attorneyId:
     // Ensure user has admin role
     await requireRole(['org_admin', 'staff', 'super_admin']);
 
-    // Update the screening with assigned attorney
+    // Update the screening with reviewedForAttorneyId (staff gatekeeper assignment)
+    // This makes the screening visible to the attorney for review
+    // Note: assignedAttorneyId is only set when a quote is accepted
     await db
       .update(screenings)
       .set({ 
-        assignedAttorneyId: attorneyId || null,
-        status: attorneyId ? 'assigned' : 'submitted',
+        reviewedForAttorneyId: attorneyId || null,
         updatedAt: new Date()
       })
       .where(eq(screenings.id, screeningId));
 
-    // Revalidate the screenings page
+    // Revalidate the screenings pages
     revalidatePath('/admin/intakes');
+    revalidatePath('/attorney/new-screenings');
     revalidatePath('/attorney');
 
     return { success: true };

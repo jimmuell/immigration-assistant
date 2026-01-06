@@ -200,7 +200,7 @@ export function QuoteTab({ screeningId, clientId, quote, status }: QuoteTabProps
             <Button 
               onClick={handleSubmitQuote} 
               disabled={isSubmitting}
-              className="flex-1"
+              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
             >
               {isSubmitting ? "Submitting..." : "Submit Quote"}
             </Button>
@@ -224,7 +224,10 @@ export function QuoteTab({ screeningId, clientId, quote, status }: QuoteTabProps
       <div className="text-center py-12 text-muted-foreground border-2 border-dashed rounded-lg">
         <DollarSign className="h-12 w-12 mx-auto mb-4 text-gray-400" />
         <p className="mb-4">No quote has been created yet</p>
-        <Button onClick={() => setIsCreatingQuote(true)}>
+        <Button 
+          onClick={() => setIsCreatingQuote(true)}
+          className="bg-blue-600 hover:bg-blue-700 text-white"
+        >
           Create Quote
         </Button>
       </div>

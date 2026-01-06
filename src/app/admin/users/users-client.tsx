@@ -1,6 +1,6 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -9,13 +9,20 @@ import { TeamTabContent } from "@/components/admin/team-tab-content";
 import Link from "next/link";
 import { UserPlus, Plus } from "lucide-react";
 
+type AttorneyProfile = {
+  yearsOfExperience?: number | null;
+  rating?: number | null;
+  ratingCount?: number | null;
+  specialties?: string[] | null;
+};
+
 type Attorney = {
   id: string;
   name: string | null;
   email: string;
   role: string;
   createdAt: Date;
-  profile: any;
+  profile: AttorneyProfile | null;
 };
 
 type User = {
@@ -35,6 +42,7 @@ interface UsersClientProps {
 
 export function UsersClient({ attorneys, clients, admins, staff }: UsersClientProps) {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const defaultTab = searchParams.get('tab') || 'attorneys';
 
   return (
@@ -51,24 +59,23 @@ export function UsersClient({ attorneys, clients, admins, staff }: UsersClientPr
         <Card className="p-6 bg-white">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-semibold">Attorneys</h2>
-            <Link href="/admin/attorneys/onboard">
-              <Button className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800">
-                <Plus className="mr-2 h-4 w-4" />
-                Add Attorney
-              </Button>
-            </Link>
+            <Button 
+              onClick={() => router.push("/admin/attorneys/add")}
+              className="bg-linear-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white"
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Add Attorney
+            </Button>
           </div>
 
           {attorneys.length === 0 ? (
             <div className="text-center py-12">
               <UserPlus className="h-12 w-12 text-gray-400 mx-auto mb-4" />
               <p className="text-gray-600 mb-4">No attorneys yet</p>
-              <Link href="/admin/attorneys/onboard">
-                <Button>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add First Attorney
-                </Button>
-              </Link>
+              <Button onClick={() => router.push("/admin/attorneys/add")}>
+                <Plus className="mr-2 h-4 w-4" />
+                Add First Attorney
+              </Button>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -76,7 +83,7 @@ export function UsersClient({ attorneys, clients, admins, staff }: UsersClientPr
                 <Link key={attorney.id} href={`/admin/attorneys/${attorney.id}`}>
                   <div className="border rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer">
                     <div className="flex items-start gap-4">
-                      <div className="h-12 w-12 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center text-white font-medium text-lg flex-shrink-0">
+                      <div className="h-12 w-12 rounded-full bg-linear-to-br from-purple-400 to-purple-600 flex items-center justify-center text-white font-medium text-lg shrink-0">
                         {attorney.name?.charAt(0) || attorney.email.charAt(0).toUpperCase()}
                       </div>
                       <div className="flex-1 min-w-0">
@@ -91,8 +98,8 @@ export function UsersClient({ attorneys, clients, admins, staff }: UsersClientPr
                             )}
                             <div className="mt-2">
                               <RatingDisplay
-                                rating={attorney.profile.rating}
-                                ratingCount={attorney.profile.ratingCount}
+                                rating={attorney.profile.rating ?? 0}
+                                ratingCount={attorney.profile.ratingCount ?? 0}
                                 size="sm"
                               />
                             </div>
@@ -102,7 +109,7 @@ export function UsersClient({ attorneys, clients, admins, staff }: UsersClientPr
                     </div>
                     {attorney.profile?.specialties && attorney.profile.specialties.length > 0 && (
                       <div className="mt-3 flex flex-wrap gap-1">
-                        {attorney.profile.specialties.slice(0, 2).map((specialty) => (
+                        {attorney.profile.specialties.slice(0, 2).map((specialty: string) => (
                           <span
                             key={specialty}
                             className="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded"
@@ -181,6 +188,7 @@ export function UsersClient({ attorneys, clients, admins, staff }: UsersClientPr
                   <tr className="border-b border-gray-200">
                     <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Name</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Email</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Role</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Type</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Joined</th>
                   </tr>
@@ -190,6 +198,7 @@ export function UsersClient({ attorneys, clients, admins, staff }: UsersClientPr
                     <tr key={admin.id} className="border-b border-gray-100 hover:bg-gray-50">
                       <td className="py-4 px-4 font-medium">{admin.name || 'N/A'}</td>
                       <td className="py-4 px-4 text-sm text-gray-600">{admin.email}</td>
+                      <td className="py-4 px-4 text-sm text-gray-600">{admin.role}</td>
                       <td className="py-4 px-4">
                         <span className={`px-3 py-1 rounded-full text-xs font-medium ${
                           admin.role === 'org_admin' 

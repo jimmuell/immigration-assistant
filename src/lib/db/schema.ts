@@ -12,6 +12,7 @@ export const organizations = pgTable('organizations', {
   contactEmail: text('contact_email'),
   contactPhone: text('contact_phone'),
   address: text('address'),
+  requireStaffPreScreening: boolean('require_staff_prescreening').default(false).notNull(), // If true, staff must assign screenings before attorneys see them
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 }, (table) => ({
@@ -20,7 +21,7 @@ export const organizations = pgTable('organizations', {
 
 export const users = pgTable('users', {
   id: uuid('id').defaultRandom().primaryKey(),
-  organizationId: uuid('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  organizationId: uuid('organization_id').references(() => organizations.id, { onDelete: 'cascade' }), // Nullable: null for clients until quote acceptance
   email: text('email').notNull().unique(),
   emailVerified: timestamp('email_verified'),
   name: text('name'),
@@ -55,7 +56,7 @@ export const messages = pgTable('messages', {
 
 export const flows = pgTable('flows', {
   id: uuid('id').defaultRandom().primaryKey(),
-  organizationId: uuid('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  organizationId: uuid('organization_id').references(() => organizations.id, { onDelete: 'cascade' }), // Nullable: null = global flow, set = org-specific (future feature)
   name: text('name').notNull(),
   description: text('description'),
   content: text('content').notNull(),
@@ -71,6 +72,7 @@ export const screenings = pgTable('screenings', {
   organizationId: uuid('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
   userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   assignedAttorneyId: uuid('assigned_attorney_id').references(() => users.id, { onDelete: 'set null' }),
+  reviewedForAttorneyId: uuid('reviewed_for_attorney_id').references(() => users.id, { onDelete: 'set null' }), // Staff gatekeeper assignment
   flowId: uuid('flow_id').references(() => flows.id, { onDelete: 'set null' }),
   flowName: text('flow_name').notNull(),
   submissionId: text('submission_id').notNull(),
@@ -78,6 +80,8 @@ export const screenings = pgTable('screenings', {
   currentStepId: text('current_step_id'), // Track which step user is on for resuming
   status: text('status', { enum: ['draft', 'submitted', 'reviewed', 'assigned', 'in_progress', 'awaiting_client', 'quoted', 'quote_accepted', 'quote_declined'] }).notNull().default('submitted'),
   isTestMode: boolean('is_test_mode').default(false).notNull(), // Flag for test/demo screenings
+  isLocked: boolean('is_locked').default(false).notNull(), // Lock from editing after submission
+  submittedForReviewAt: timestamp('submitted_for_review_at'), // Track when submitted for attorney review
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 }, (table) => ({
@@ -181,6 +185,20 @@ export const attorneyRatings = pgTable('attorney_ratings', {
   clientIdx: index('attorney_ratings_client_idx').on(table.clientId),
 }));
 
+export const notificationStates = pgTable('notification_states', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  notificationId: text('notification_id').notNull(), // Composite ID like "quote-{screeningId}"
+  isRead: boolean('is_read').notNull().default(false),
+  isDismissed: boolean('is_dismissed').notNull().default(false),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+  userIdx: index('notification_states_user_idx').on(table.userId),
+  userDismissedIdx: index('notification_states_user_dismissed_idx').on(table.userId, table.isDismissed),
+  uniqueUserNotification: index('notification_states_user_notification_unique').on(table.userId, table.notificationId),
+}));
+
 export type Organization = typeof organizations.$inferSelect;
 export type NewOrganization = typeof organizations.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -203,6 +221,8 @@ export type ScreeningDocument = typeof screeningDocuments.$inferSelect;
 export type NewScreeningDocument = typeof screeningDocuments.$inferInsert;
 export type QuoteRequest = typeof quoteRequests.$inferSelect;
 export type NewQuoteRequest = typeof quoteRequests.$inferInsert;
+export type NotificationState = typeof notificationStates.$inferSelect;
+export type NewNotificationState = typeof notificationStates.$inferInsert;
 export type AttorneyProfile = typeof attorneyProfiles.$inferSelect;
 export type NewAttorneyProfile = typeof attorneyProfiles.$inferInsert;
 export type AttorneyRating = typeof attorneyRatings.$inferSelect;

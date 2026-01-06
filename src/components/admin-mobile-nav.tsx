@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, X, Shield, UserCog, GitBranch, ClipboardList, LogOut, Briefcase, FlaskConical } from "lucide-react";
+import { Menu, X, Shield, UserCog, GitBranch, ClipboardList, LogOut, Briefcase, FlaskConical, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { signOut, useSession } from "next-auth/react";
 
@@ -40,6 +40,11 @@ export function AdminMobileNav() {
       name: "Screenings",
       href: "/admin/intakes",
       icon: ClipboardList,
+    },
+    {
+      name: "Settings",
+      href: "/admin/settings",
+      icon: Settings,
     },
     {
       name: "Test Screenings",

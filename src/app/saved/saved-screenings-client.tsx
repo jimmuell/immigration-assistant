@@ -108,7 +108,7 @@ export function SavedScreeningsClient({ screenings: initialScreenings }: SavedSc
                 <div className="flex items-center gap-2">
                   {screening.flowId && (
                     <Link href={`/flow/${screening.flowId}`}>
-                      <Button variant="default" size="sm" className="bg-blue-600 hover:bg-blue-700">
+                      <Button variant="default" size="sm" className="bg-blue-600 hover:bg-blue-700 text-white">
                         <span>Resume</span>
                         <ArrowRight className="ml-1 h-4 w-4" />
                       </Button>
@@ -135,7 +135,7 @@ export function SavedScreeningsClient({ screenings: initialScreenings }: SavedSc
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Saved Screening?</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete your progress on "{selectedScreening?.flowName}"? This action cannot be undone and all your answers will be lost.
+              Are you sure you want to delete your progress on &ldquo;{selectedScreening?.flowName}&rdquo;? This action cannot be undone and all your answers will be lost.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

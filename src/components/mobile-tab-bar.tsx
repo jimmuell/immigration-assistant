@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Bookmark, CheckCircle, Users, Shield, FileText, DollarSign, CheckSquare, Briefcase } from "lucide-react";
+import { Home, Bookmark, CheckCircle, Users, Shield, FileText, DollarSign, CheckSquare, Briefcase, Send } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useState, useEffect } from "react";
 
@@ -37,6 +37,12 @@ export function MobileTabBar() {
       name: "Completed",
       href: "/completed",
       icon: CheckCircle,
+      roles: ['client'],
+    },
+    {
+      name: "Released",
+      href: "/released",
+      icon: Send,
       roles: ['client'],
     },
     {

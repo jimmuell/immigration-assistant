@@ -26,6 +26,8 @@ export default async function ScreeningDetailPage({ params }: ScreeningDetailPag
       submissionId: screenings.submissionId,
       responses: screenings.responses,
       status: screenings.status,
+      isLocked: screenings.isLocked,
+      submittedForReviewAt: screenings.submittedForReviewAt,
       createdAt: screenings.createdAt,
       updatedAt: screenings.updatedAt,
       userId: screenings.userId,
@@ -47,8 +49,8 @@ export default async function ScreeningDetailPage({ params }: ScreeningDetailPag
     notFound();
   }
 
-  // Fetch messages if attorney is assigned
-  const messages = screening.assignedAttorneyId ? await db
+  // Fetch messages (can exist even if quote not accepted yet)
+  const messages = await db
     .select({
       id: attorneyClientMessages.id,
       content: attorneyClientMessages.content,
@@ -62,7 +64,7 @@ export default async function ScreeningDetailPage({ params }: ScreeningDetailPag
     .from(attorneyClientMessages)
     .leftJoin(users, eq(users.id, attorneyClientMessages.senderId))
     .where(eq(attorneyClientMessages.screeningId, id))
-    .orderBy(attorneyClientMessages.createdAt) : [];
+    .orderBy(attorneyClientMessages.createdAt);
 
   // Fetch documents
   const documents = await db
@@ -85,12 +87,13 @@ export default async function ScreeningDetailPage({ params }: ScreeningDetailPag
     .orderBy(desc(screeningDocuments.createdAt));
 
   // Fetch quote (if exists)
-  const [quote] = screening.assignedAttorneyId ? await db
+  // Note: Quote can exist even if assignedAttorneyId is null (pending quotes)
+  const [quote] = await db
     .select()
     .from(quoteRequests)
     .where(eq(quoteRequests.screeningId, id))
     .orderBy(desc(quoteRequests.createdAt))
-    .limit(1) : [null];
+    .limit(1);
 
   return (
     <ScreeningDetailClient 

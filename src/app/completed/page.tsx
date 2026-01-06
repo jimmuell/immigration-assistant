@@ -23,9 +23,9 @@ export default async function CompletedPage() {
       <div className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-4xl px-4 py-6">
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">Completed</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Completed Screenings</h1>
           <p className="mt-1 text-sm text-gray-600">
-            Track your completed forms, consultations, and milestones
+            Review and release your completed screenings to attorneys
           </p>
         </div>
 
@@ -36,7 +36,7 @@ export default async function CompletedPage() {
               No completed screenings yet
             </h3>
             <p className="mb-6 text-sm text-gray-600">
-              Your completed screenings and forms will appear here
+              Your completed screenings will appear here
             </p>
             <Link href="/">
               <Button>Get Started</Button>
@@ -52,10 +52,10 @@ export default async function CompletedPage() {
               <CheckCircle className="h-5 w-5 text-blue-600" />
             </div>
             <div>
-              <h3 className="font-semibold text-blue-900">Track Your Progress</h3>
+              <h3 className="font-semibold text-blue-900">Ready to Submit?</h3>
               <p className="mt-1 text-sm text-blue-700">
-                Keep track of all your completed tasks and forms in one place. You can
-                review them anytime you need.
+                Review your completed screenings carefully. When ready, click "Submit for Review" 
+                to release them to our attorneys. Once released, screenings will move to the "Released" tab.
               </p>
             </div>
           </div>

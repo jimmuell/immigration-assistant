@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 import { flows, screenings } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import FlowClient from "./flow-client";
 import { auth } from "@/lib/auth";
 
@@ -47,6 +47,11 @@ export default async function FlowPage({ params }: FlowPageProps) {
       .limit(1);
     
     if (draft) {
+      // Check if the screening is locked
+      if (draft.isLocked) {
+        // Redirect to completed page if locked
+        redirect(`/completed/${draft.id}`);
+      }
       savedScreening = draft;
     }
   }

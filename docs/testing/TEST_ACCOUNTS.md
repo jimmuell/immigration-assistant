@@ -60,6 +60,25 @@ password: TestClient123!
 email: testattorney@test.com
 password: TestAttorney123!
 
+**Quick Login Buttons:**
+- Client button → testclient@test.com / TestClient123!
+- Attorney button → testattorney@test.com / TestAttorney123!
+- Super Admin button → superadmin@immigration-assistant.com / SuperAdmin123!
+
+## Additional Test Accounts
+
+### Perry Mason's Practice
+- **Org Admin/Attorney:** perry.mason@masonlaw.com / 12345678
+- **Staff:** jimmuell@aol.com / 12345678
+
+### Test Law Firm
+- **Org Admin:** testadmin@test.com / TestAdmin123!
+- **Attorney:** testattorney@test.com / TestAttorney123!
+- **Client:** testclient@test.com / TestClient123!
+
+### Platform Administration
+- **Super Admin:** superadmin@immigration-assistant.com / SuperAdmin123!
+
 // Super Admin button (already correct)
 email: superadmin@immigration-assistant.com
 password: SuperAdmin123!

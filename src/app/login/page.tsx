@@ -42,7 +42,7 @@ export default function LoginPage() {
       role === 'client' 
         ? { email: 'testclient@test.com', password: 'TestClient123!' }
         : role === 'attorney'
-        ? { email: 'testattorney@test.com', password: '123456' }
+        ? { email: 'testattorney@test.com', password: 'TestAttorney123!' }
         : { email: 'superadmin@immigration-assistant.com', password: 'SuperAdmin123!' };
     
     setFormData(credentials);

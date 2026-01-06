@@ -9,7 +9,7 @@
 // JSON Format Interfaces
 export interface FlowNode {
   id: string;
-  type: 'start' | 'yes-no' | 'text' | 'form' | 'end' | 'multiple-choice';
+  type: 'start' | 'yes-no' | 'text' | 'form' | 'end' | 'multiple-choice' | 'date';
   question: string;
   options?: Array<{
     id: string | number;
@@ -17,6 +17,12 @@ export interface FlowNode {
   }>;
   yesLabel?: string | null;
   noLabel?: string | null;
+  // For text and date input nodes
+  placeholder?: string;
+  defaultValue?: string;
+  fieldName?: string;
+  required?: boolean;
+  // For form nodes
   formTitle?: string | null;
   formDescription?: string | null;
   formFields?: Array<{
@@ -26,9 +32,15 @@ export interface FlowNode {
     placeholder?: string;
     required?: boolean;
     defaultValue?: string;
+    options?: string[];
   }>;
+  // For end/success nodes
   thankYouTitle?: string | null;
   thankYouMessage?: string | null;
+  // For info nodes
+  infoMessage?: string | null;
+  // For subflow nodes
+  subflowId?: string | null;
 }
 
 export interface FlowConnection {
@@ -55,11 +67,15 @@ export interface FlowOption {
 
 export interface FlowStep {
   id: string;
-  type: 'start' | 'yes-no' | 'text' | 'form' | 'end' | 'multiple-choice';
+  type: 'start' | 'yes-no' | 'text' | 'form' | 'end' | 'multiple-choice' | 'date' | 'info' | 'success' | 'subflow';
   question: string;
   options: FlowOption[];
-  placeholder?: string;  // For text input nodes
-  defaultValue?: string; // For text input nodes
+  // For text and date input nodes
+  placeholder?: string;
+  defaultValue?: string;
+  fieldName?: string;
+  required?: boolean;
+  // For form nodes
   formFields?: Array<{
     id: string;
     type: string;
@@ -67,7 +83,15 @@ export interface FlowStep {
     placeholder?: string;
     required?: boolean;
     defaultValue?: string;
+    options?: string[];
   }>;
+  // For end/success nodes
+  thankYouTitle?: string;
+  thankYouMessage?: string;
+  // For info nodes
+  infoMessage?: string;
+  // For subflow nodes
+  subflowId?: string;
 }
 
 export interface ParsedFlow {
@@ -213,9 +237,20 @@ function parseFlowFromJSON(flowJSON: FlowJSON): ParsedFlow {
       type: node.type,
       question: displayQuestion,
       options,
+      // Text/Date input fields
       placeholder: node.placeholder,
       defaultValue: node.defaultValue,
+      fieldName: node.fieldName,
+      required: node.required,
+      // Form fields
       formFields: node.formFields,
+      // End/Success node fields
+      thankYouTitle: node.thankYouTitle,
+      thankYouMessage: node.thankYouMessage,
+      // Info node fields
+      infoMessage: node.infoMessage,
+      // Subflow node fields
+      subflowId: node.subflowId,
     };
     
     steps.push(step);

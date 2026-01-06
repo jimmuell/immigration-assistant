@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, X, Home, Bookmark, CheckCircle, LogOut, User } from "lucide-react";
+import { Menu, X, Home, Bookmark, CheckCircle, LogOut, User, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { signOut, useSession } from "next-auth/react";
 
@@ -44,6 +44,11 @@ export function ClientMobileNav() {
       name: "Completed",
       href: "/completed",
       icon: CheckCircle,
+    },
+    {
+      name: "Released",
+      href: "/released",
+      icon: Send,
     },
   ];
 

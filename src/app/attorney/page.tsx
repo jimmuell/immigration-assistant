@@ -18,6 +18,8 @@ export default async function AttorneyDashboard() {
   const attorneyId = session?.user?.id;
 
   // Get assigned screenings with client info (excluding test screenings)
+  // Note: Only show screenings specifically assigned to this attorney on dashboard
+  // (The "New Screenings" page shows both assigned + unassigned)
   const assignedScreenings = await db
     .select({
       id: screenings.id,

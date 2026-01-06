@@ -14,6 +14,8 @@ export default async function PendingQuotesPage() {
   const attorneyId = session?.user?.id;
 
   // Fetch screenings with pending quotes (excluding test screenings)
+  // Note: We filter by quoteRequests.attorneyId, not screenings.assignedAttorneyId
+  // assignedAttorneyId is only set when quote is ACCEPTED
   const pendingQuotes = await db
     .select({
       id: screenings.id,
@@ -35,7 +37,7 @@ export default async function PendingQuotesPage() {
     .innerJoin(quoteRequests, eq(quoteRequests.screeningId, screenings.id))
     .where(
       and(
-        eq(screenings.assignedAttorneyId, attorneyId!),
+        eq(quoteRequests.attorneyId, attorneyId!), // Filter by quote attorney, not assignedAttorneyId
         eq(quoteRequests.status, 'pending'),
         eq(screenings.status, 'quoted'),
         eq(screenings.isTestMode, false) // Exclude test screenings

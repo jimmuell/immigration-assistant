@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Bookmark, CheckCircle, LogOut, ChevronLeft, ChevronRight, Users, Shield, UserCog, GitBranch, ClipboardList, FileText, DollarSign, CheckSquare, Briefcase, Building2, Crown, FlaskConical } from "lucide-react";
+import { Home, Bookmark, CheckCircle, LogOut, ChevronLeft, ChevronRight, Users, Shield, UserCog, GitBranch, ClipboardList, FileText, DollarSign, CheckSquare, Briefcase, Building2, Crown, FlaskConical, Send, Settings, EyeOff, Eye } from "lucide-react";
 import { signOut, useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
@@ -11,15 +11,23 @@ export function DesktopSidebar() {
   const pathname = usePathname();
   const { data: session } = useSession();
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [showAdminMenu, setShowAdminMenu] = useState(false); // Default to hidden
   const [isMounted, setIsMounted] = useState(false);
 
-  // Load collapsed state from localStorage
+  // Load collapsed and admin menu visibility state from localStorage
   useEffect(() => {
     setIsMounted(true);
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem("sidebarCollapsed");
-      if (saved !== null) {
-        setIsCollapsed(saved === "true");
+      const savedCollapsed = localStorage.getItem("sidebarCollapsed");
+      if (savedCollapsed !== null) {
+        setIsCollapsed(savedCollapsed === "true");
+      }
+      const savedAdminMenu = localStorage.getItem("showAdminMenu");
+      if (savedAdminMenu !== null) {
+        setShowAdminMenu(savedAdminMenu === "true");
+      } else {
+        // Default to hidden if no saved preference
+        setShowAdminMenu(false);
       }
     }
   }, []);
@@ -35,6 +43,15 @@ export function DesktopSidebar() {
     setIsCollapsed(newState);
     if (typeof window !== 'undefined') {
       localStorage.setItem("sidebarCollapsed", String(newState));
+    }
+  };
+
+  // Toggle admin menu visibility
+  const toggleAdminMenu = () => {
+    const newState = !showAdminMenu;
+    setShowAdminMenu(newState);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem("showAdminMenu", String(newState));
     }
   };
 
@@ -55,6 +72,12 @@ export function DesktopSidebar() {
       name: "Completed",
       href: "/completed",
       icon: CheckCircle,
+      roles: ['client'],
+    },
+    {
+      name: "Released",
+      href: "/released",
+      icon: Send,
       roles: ['client'],
     },
     {
@@ -112,6 +135,12 @@ export function DesktopSidebar() {
       roles: ['org_admin', 'staff', 'super_admin'],
     },
     {
+      name: "Settings",
+      href: "/admin/settings",
+      icon: Settings,
+      roles: ['org_admin', 'staff', 'super_admin'],
+    },
+    {
       name: "Test Screenings",
       href: "/test-screenings",
       icon: FlaskConical,
@@ -133,9 +162,25 @@ export function DesktopSidebar() {
 
   // Filter nav items based on user role
   const userRole = session?.user?.role;
-  const filteredNavItems = navItems.filter(item => 
-    item.roles.includes(userRole as 'client' | 'attorney' | 'org_admin' | 'staff' | 'super_admin')
-  );
+  
+  // Determine if user can toggle admin menu (org_admin or attorney role, not pure staff)
+  const canToggleAdminMenu = userRole === 'org_admin' || userRole === 'attorney';
+  
+  // Define which items are "admin" items
+  const adminMenuItems = ['/admin', '/admin/users', '/admin/flows', '/admin/intakes', '/admin/settings', '/test-screenings'];
+  
+  const filteredNavItems = navItems.filter(item => {
+    // First check if item is available for this role
+    const hasRole = item.roles.includes(userRole as 'client' | 'attorney' | 'org_admin' | 'staff' | 'super_admin');
+    if (!hasRole) return false;
+    
+    // If user can toggle admin menu and it's hidden, filter out admin items
+    if (canToggleAdminMenu && !showAdminMenu && adminMenuItems.includes(item.href)) {
+      return false;
+    }
+    
+    return true;
+  });
 
   return (
     <aside
@@ -209,6 +254,27 @@ export function DesktopSidebar() {
                 </p>
               )}
             </div>
+            {/* Admin Menu Toggle for org_admin/attorney */}
+            {canToggleAdminMenu && (
+              <Button
+                onClick={toggleAdminMenu}
+                variant="outline"
+                className="w-full bg-white text-gray-700 hover:bg-gray-50 mb-2"
+                size="sm"
+              >
+                {showAdminMenu ? (
+                  <>
+                    <EyeOff className="mr-2 h-4 w-4" />
+                    Hide Admin Menu
+                  </>
+                ) : (
+                  <>
+                    <Eye className="mr-2 h-4 w-4" />
+                    Show Admin Menu
+                  </>
+                )}
+              </Button>
+            )}
             <Button
               onClick={() => signOut({ callbackUrl: "/login" })}
               variant="outline"

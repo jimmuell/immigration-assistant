@@ -100,15 +100,45 @@ export function FlowRenderer({ markdown, flowId, flowName, savedScreening, userR
     }
   }, [markdown, savedScreening]);
 
-  // Initialize selectedOption when navigating to a step with a stored answer
+  // Initialize selectedOption and text input when navigating to a step
   useEffect(() => {
-    if (currentStepId) {
+    if (currentStepId && flow) {
       const storedAnswer = stepAnswers[currentStepId];
-      // Only update if the selected option doesn't match stored answer
+      const currentStep = flow.steps.find(s => s.id === currentStepId);
+      
+      // Update selected option
       setSelectedOption(storedAnswer || null);
+      
+      // Initialize text input with stored answer or default value
+      if (currentStep?.type === 'text') {
+        if (storedAnswer) {
+          setTextInput(storedAnswer);
+        } else if (currentStep.defaultValue) {
+          setTextInput(currentStep.defaultValue);
+        } else {
+          setTextInput('');
+        }
+      } else {
+        setTextInput('');
+      }
+      
+      // Initialize form data with stored values or default values
+      if (currentStep?.type === 'form' && currentStep.formFields) {
+        if (storedAnswer) {
+          setFormData(storedAnswer);
+        } else {
+          const defaultFormData: Record<string, string> = {};
+          currentStep.formFields.forEach(field => {
+            if (field.defaultValue) {
+              defaultFormData[field.id] = field.defaultValue;
+            }
+          });
+          setFormData(defaultFormData);
+        }
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentStepId]); // Only depend on currentStepId to avoid race conditions
+  }, [currentStepId, flow]); // Depend on both currentStepId and flow
 
   const recordResponse = (question: string, answer: string) => {
     setResponses(prev => [...prev, { question, answer }]);
@@ -474,14 +504,6 @@ export function FlowRenderer({ markdown, flowId, flowName, savedScreening, userR
 
   // Render text input node (for free-form text responses)
   if (currentStep.type === 'text' && currentStep.options.length > 0) {
-    // Restore previous answer if navigating back, or initialize with default value
-    const storedAnswer = stepAnswers[currentStepId];
-    if (storedAnswer && !textInput) {
-      setTextInput(storedAnswer);
-    } else if (!storedAnswer && !textInput && currentStep.defaultValue) {
-      setTextInput(currentStep.defaultValue);
-    }
-
     const handleTextSubmit = () => {
       const trimmed = textInput.trim();
       
@@ -708,23 +730,6 @@ export function FlowRenderer({ markdown, flowId, flowName, savedScreening, userR
 
   // Render form node
   if (currentStep.type === 'form' && currentStep.formFields) {
-    // Restore previous form data if navigating back
-    const storedFormData = stepAnswers[currentStepId];
-    if (storedFormData && Object.keys(formData).length === 0) {
-      setFormData(storedFormData);
-    } else if (Object.keys(formData).length === 0) {
-      // Initialize with default values if no stored data
-      const defaultFormData: Record<string, string> = {};
-      currentStep.formFields.forEach(field => {
-        if (field.defaultValue) {
-          defaultFormData[field.id] = field.defaultValue;
-        }
-      });
-      if (Object.keys(defaultFormData).length > 0) {
-        setFormData(defaultFormData);
-      }
-    }
-
     const progress = calculateProgress();
     const isAdminPreview = canUseTestMode && !isTestMode;
 

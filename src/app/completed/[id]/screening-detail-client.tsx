@@ -2,12 +2,25 @@
 
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, CheckCircle, Calendar, FileText, UserCheck, MessageSquare, DollarSign } from "lucide-react";
+import { ArrowLeft, CheckCircle, Calendar, FileText, UserCheck, MessageSquare, DollarSign, Send, Lock } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MessagesTab } from "../../attorney/screenings/[id]/tabs/messages-tab";
 import { DocumentsTab } from "../../attorney/screenings/[id]/tabs/documents-tab";
 import { useState } from "react";
+import { acceptQuote, declineQuote } from "./actions";
+import { submitForReview } from "../actions";
+import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface Response {
   question: string;
@@ -82,6 +95,10 @@ export default function ScreeningDetailClient({
 }: ScreeningDetailClientProps) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState("responses");
+  const [showAcceptDialog, setShowAcceptDialog] = useState(false);
+  const [showDeclineDialog, setShowDeclineDialog] = useState(false);
+  const [showReleaseDialog, setShowReleaseDialog] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const formatDate = (date: Date) => {
     return new Intl.DateTimeFormat('en-US', {
@@ -103,6 +120,70 @@ export default function ScreeningDetailClient({
   const unreadMessages = messages.filter(
     (msg) => !msg.isRead && msg.receiverId === clientId
   ).length;
+
+  const handleAcceptQuote = async () => {
+    if (!quote) return;
+    
+    setIsProcessing(true);
+    setShowAcceptDialog(false);
+    
+    try {
+      const result = await acceptQuote(quote.id, screening.id);
+      
+      if (result.success) {
+        toast.success('Quote accepted successfully! You are now a client of this attorney.');
+        router.refresh();
+      } else {
+        toast.error(result.error || 'Failed to accept quote');
+      }
+    } catch (error) {
+      toast.error('An unexpected error occurred');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleDeclineQuote = async () => {
+    if (!quote) return;
+    
+    setIsProcessing(true);
+    setShowDeclineDialog(false);
+    
+    try {
+      const result = await declineQuote(quote.id, screening.id);
+      
+      if (result.success) {
+        toast.success('Quote declined');
+        router.refresh();
+      } else {
+        toast.error(result.error || 'Failed to decline quote');
+      }
+    } catch (error) {
+      toast.error('An unexpected error occurred');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleReleaseToAttorneys = async () => {
+    setIsProcessing(true);
+    setShowReleaseDialog(false);
+    
+    try {
+      const result = await submitForReview(screening.id);
+      
+      if (result.success) {
+        toast.success('Screening released to attorneys for review');
+        router.push('/released'); // Redirect to Released tab
+      } else {
+        toast.error(result.error || 'Failed to release screening');
+      }
+    } catch (error) {
+      toast.error('An unexpected error occurred');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -153,6 +234,16 @@ export default function ScreeningDetailClient({
                 </span>
               </div>
             </div>
+            {!screening.isLocked && (
+              <Button
+                onClick={() => setShowReleaseDialog(true)}
+                disabled={isProcessing}
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                <Send className="mr-2 h-4 w-4" />
+                Release to Attorneys
+              </Button>
+            )}
           </div>
         </div>
 
@@ -202,10 +293,21 @@ export default function ScreeningDetailClient({
             )}
             {quote.status === 'pending' && (
               <div className="flex gap-2 pt-3 border-t border-purple-200">
-                <Button size="sm" className="flex-1" disabled>
+                <Button 
+                  size="sm" 
+                  className="flex-1 bg-green-600 hover:bg-green-700" 
+                  onClick={() => setShowAcceptDialog(true)}
+                  disabled={isProcessing}
+                >
                   Accept Quote
                 </Button>
-                <Button size="sm" variant="outline" className="flex-1" disabled>
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  className="flex-1 text-red-600 hover:text-red-700 hover:bg-red-50" 
+                  onClick={() => setShowDeclineDialog(true)}
+                  disabled={isProcessing}
+                >
                   Decline
                 </Button>
               </div>
@@ -324,6 +426,74 @@ export default function ScreeningDetailClient({
           </Card>
         )}
       </div>
+
+      {/* Accept Quote Dialog */}
+      <AlertDialog open={showAcceptDialog} onOpenChange={setShowAcceptDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Accept Quote?</AlertDialogTitle>
+            <AlertDialogDescription>
+              By accepting this quote, you agree to work with this attorney and will be assigned to their organization. 
+              The attorney will begin working on your case.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isProcessing}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleAcceptQuote}
+              disabled={isProcessing}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              {isProcessing ? 'Processing...' : 'Accept Quote'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Decline Quote Dialog */}
+      <AlertDialog open={showDeclineDialog} onOpenChange={setShowDeclineDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Decline Quote?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to decline this quote? The attorney will be notified of your decision.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isProcessing}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeclineQuote}
+              disabled={isProcessing}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {isProcessing ? 'Processing...' : 'Decline Quote'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Release to Attorneys Dialog */}
+      <AlertDialog open={showReleaseDialog} onOpenChange={setShowReleaseDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Release to Attorneys?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Once released, you will not be able to edit your responses. Your screening will be locked 
+              and sent to our attorneys for review. Make sure all your information is correct before proceeding.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isProcessing}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleReleaseToAttorneys}
+              disabled={isProcessing}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              {isProcessing ? 'Releasing...' : 'Release to Attorneys'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -33,10 +33,12 @@ export async function POST(req: Request) {
       );
     }
 
-    // Get organization ID - use provided one or default to Platform Administration
-    let organizationId = validatedData.organizationId;
+    // For clients, organizationId is null until they accept a quote
+    // For other roles, organizationId must be provided
+    let organizationId = validatedData.organizationId || null;
     
-    if (!organizationId) {
+    if (!organizationId && validatedData.role !== 'client') {
+      // Non-client roles must have an organization
       // Get or create the default "Platform Administration" organization
       let [defaultOrg] = await db
         .select()
@@ -66,7 +68,7 @@ export async function POST(req: Request) {
     const [user] = await db
       .insert(users)
       .values({
-        organizationId,
+        organizationId: organizationId,
         email: validatedData.email,
         password: hashedPassword,
         name: validatedData.name || null,
