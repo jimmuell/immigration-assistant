@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { screenings, users, attorneyClientMessages, screeningDocuments, quoteRequests } from "@/lib/db/schema";
+import { screenings, users, screeningDocuments, quoteRequests } from "@/lib/db/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
@@ -55,23 +55,6 @@ export default async function ScreeningDetailPage({ params }: ScreeningDetailPag
     redirect(`/test-screenings/${id}`);
   }
 
-  // Fetch messages (can exist even if quote not accepted yet)
-  const messages = await db
-    .select({
-      id: attorneyClientMessages.id,
-      content: attorneyClientMessages.content,
-      senderId: attorneyClientMessages.senderId,
-      receiverId: attorneyClientMessages.receiverId,
-      isRead: attorneyClientMessages.isRead,
-      createdAt: attorneyClientMessages.createdAt,
-      senderName: users.name,
-      senderEmail: users.email,
-    })
-    .from(attorneyClientMessages)
-    .leftJoin(users, eq(users.id, attorneyClientMessages.senderId))
-    .where(eq(attorneyClientMessages.screeningId, id))
-    .orderBy(attorneyClientMessages.createdAt);
-
   // Fetch documents
   const documents = await db
     .select({
@@ -112,7 +95,6 @@ export default async function ScreeningDetailPage({ params }: ScreeningDetailPag
   return (
     <ScreeningDetailClient
       screening={screening}
-      messages={messages}
       documents={documents}
       quote={quote || null}
       clientId={session.user.id}

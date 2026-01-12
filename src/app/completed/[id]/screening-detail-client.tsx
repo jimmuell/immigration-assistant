@@ -2,10 +2,9 @@
 
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, CheckCircle, Calendar, FileText, UserCheck, MessageSquare, MessagesSquare, DollarSign, Send, Lock } from "lucide-react";
+import { ArrowLeft, CheckCircle, Calendar, FileText, UserCheck, MessageSquare, DollarSign, Send } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { MessagesTab } from "../../attorney/screenings/[id]/tabs/messages-tab";
 import { DocumentsTab } from "../../attorney/screenings/[id]/tabs/documents-tab";
 import { QuoteThreadTab } from "../../attorney/screenings/[id]/tabs/quote-thread-tab";
 import { useState } from "react";
@@ -26,17 +25,6 @@ import {
 interface Response {
   question: string;
   answer: string;
-}
-
-interface Message {
-  id: string;
-  content: string;
-  senderId: string;
-  receiverId: string;
-  isRead: boolean;
-  createdAt: Date;
-  senderName: string | null;
-  senderEmail: string | null;
 }
 
 interface Document {
@@ -83,7 +71,6 @@ interface Screening {
 
 interface ScreeningDetailClientProps {
   screening: Screening;
-  messages: Message[];
   documents: Document[];
   quote: Quote | null;
   clientId: string;
@@ -92,7 +79,6 @@ interface ScreeningDetailClientProps {
 
 export default function ScreeningDetailClient({
   screening,
-  messages,
   documents,
   quote,
   clientId,
@@ -124,9 +110,8 @@ export default function ScreeningDetailClient({
     console.error('Error parsing responses:', error);
   }
 
-  const unreadMessages = messages.filter(
-    (msg) => !msg.isRead && msg.receiverId === clientId
-  ).length;
+  // Show messages tab only when a quote exists (PII-protected messaging)
+  const showMessagesTab = !!quote;
 
   const handleAcceptQuote = async () => {
     if (!quote) return;
@@ -326,24 +311,15 @@ export default function ScreeningDetailClient({
         <Card className="p-6">
           {screening.assignedAttorneyId ? (
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className={`grid w-full mb-6 ${quote ? 'grid-cols-4' : 'grid-cols-3'}`}>
+              <TabsList className={`grid w-full mb-6 ${showMessagesTab ? 'grid-cols-3' : 'grid-cols-2'}`}>
                 <TabsTrigger value="responses">
                   <FileText className="h-4 w-4 mr-2" />
                   Responses
                 </TabsTrigger>
-                <TabsTrigger value="messages">
-                  <MessageSquare className="h-4 w-4 mr-2" />
-                  Messages
-                  {unreadMessages > 0 && (
-                    <span className="ml-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                      {unreadMessages}
-                    </span>
-                  )}
-                </TabsTrigger>
-                {quote && (
-                  <TabsTrigger value="discussion">
-                    <MessagesSquare className="h-4 w-4 mr-2" />
-                    Discussion
+                {showMessagesTab && (
+                  <TabsTrigger value="messages">
+                    <MessageSquare className="h-4 w-4 mr-2" />
+                    Messages
                   </TabsTrigger>
                 )}
                 <TabsTrigger value="documents">
@@ -373,17 +349,8 @@ export default function ScreeningDetailClient({
                 </div>
               </TabsContent>
 
-              <TabsContent value="messages">
-                <MessagesTab
-                  screeningId={screening.id}
-                  clientId={clientId}
-                  attorneyId={screening.assignedAttorneyId!}
-                  messages={messages}
-                />
-              </TabsContent>
-
-              {quote && (
-                <TabsContent value="discussion">
+              {showMessagesTab && quote && (
+                <TabsContent value="messages">
                   <QuoteThreadTab
                     screeningId={screening.id}
                     quoteRequestId={quote.id}

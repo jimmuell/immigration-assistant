@@ -1,7 +1,7 @@
 import { requireRole } from "@/lib/role-middleware";
 import { db } from "@/lib/db";
-import { screenings, users, attorneyClientMessages, screeningDocuments, quoteRequests, screeningViews, organizations, attorneyProfiles } from "@/lib/db/schema";
-import { eq, and, or, desc } from "drizzle-orm";
+import { screenings, users, screeningDocuments, quoteRequests, screeningViews, organizations, attorneyProfiles } from "@/lib/db/schema";
+import { eq, and, desc } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { notFound, redirect } from "next/navigation";
 import { Card } from "@/components/ui/card";
@@ -109,23 +109,6 @@ export default async function AttorneyScreeningDetailPage({
     });
   }
 
-  // Fetch messages
-  const messages = screening.assignedAttorneyId ? await db
-    .select({
-      id: attorneyClientMessages.id,
-      content: attorneyClientMessages.content,
-      senderId: attorneyClientMessages.senderId,
-      receiverId: attorneyClientMessages.receiverId,
-      isRead: attorneyClientMessages.isRead,
-      createdAt: attorneyClientMessages.createdAt,
-      senderName: users.name,
-      senderEmail: users.email,
-    })
-    .from(attorneyClientMessages)
-    .leftJoin(users, eq(users.id, attorneyClientMessages.senderId))
-    .where(eq(attorneyClientMessages.screeningId, id))
-    .orderBy(attorneyClientMessages.createdAt) : [];
-
   // Fetch documents
   const documents = await db
     .select({
@@ -218,7 +201,6 @@ export default async function AttorneyScreeningDetailPage({
           clientName={clientDisplayName}
           attorneyId={attorneyId!}
           responses={responses}
-          messages={messages}
           documents={documents}
           quote={quote}
           status={screening.status}
