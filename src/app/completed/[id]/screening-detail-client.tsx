@@ -310,7 +310,7 @@ export default function ScreeningDetailClient({
         {/* Tabbed Content */}
         <Card className="p-6">
           {screening.assignedAttorneyId ? (
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <Tabs id={`screening-tabs-${screening.id}`} value={activeTab} onValueChange={setActiveTab}>
               <TabsList className={`grid w-full mb-6 ${showMessagesTab ? 'grid-cols-3' : 'grid-cols-2'}`}>
                 <TabsTrigger value="responses">
                   <FileText className="h-4 w-4 mr-2" />

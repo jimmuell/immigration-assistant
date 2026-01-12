@@ -74,7 +74,7 @@ export default function ScreeningDetailClient({
 
   return (
     <Card className="p-6">
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
+      <Tabs id={`attorney-screening-tabs-${screeningId}`} value={activeTab} onValueChange={setActiveTab}>
         <TabsList className={`grid w-full mb-6 ${showMessagesTab ? 'grid-cols-4' : 'grid-cols-3'}`}>
           <TabsTrigger value="responses" className="flex items-center gap-2">
             <ClipboardList className="h-4 w-4" />
