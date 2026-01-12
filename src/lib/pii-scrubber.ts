@@ -5,8 +5,17 @@
  * to prevent off-platform contact between attorneys and clients before
  * a paid commitment exists.
  *
+ * Uses a hybrid approach:
+ * 1. Fast regex-based detection for obvious patterns
+ * 2. AI-enhanced detection (Claude Haiku) for obfuscated patterns
+ *
  * Based on the Lead Protection Architecture document.
  */
+
+import {
+  moderateMessage,
+  type AIModeratorResult,
+} from "./ai-pii-moderator";
 
 // ============================================================================
 // TYPES
@@ -356,3 +365,86 @@ export const PII_SCRUBBER_CONSTANTS = {
   REPLACEMENT_MARKER,
   SYSTEM_WARNING,
 } as const;
+
+// ============================================================================
+// AI-ENHANCED PROCESSING
+// ============================================================================
+
+export interface AIEnhancedProcessedMessage extends ProcessedMessage {
+  aiModerated: boolean;
+  aiResult: AIModeratorResult | null;
+}
+
+/**
+ * Process a message with AI-enhanced PII detection
+ * Uses hybrid approach: regex first, then AI for suspicious messages
+ *
+ * This catches obfuscated contact info like:
+ * - "j i m u e l l a t g m a i l d o t c o m"
+ * - "five five five one two three four"
+ * - "search for my firm name"
+ */
+export async function processMessageWithAI(
+  content: string
+): Promise<AIEnhancedProcessedMessage> {
+  // Step 1: Run regex detection
+  const regexResult = scrubPII(content);
+  const regexFoundPII = regexResult.wasScubbed;
+
+  // Step 2: Run hybrid AI moderation
+  const moderationResult = await moderateMessage(content, regexFoundPII);
+
+  // Step 3: Determine final result
+  if (regexFoundPII) {
+    // Regex found PII - use regex result
+    const types = [...new Set(regexResult.matches.map((m) => m.type))];
+    return {
+      content: regexResult.scrubbedContent,
+      originalContent: regexResult.originalContent,
+      piiScrubbed: true,
+      piiScrubDetails: {
+        matchCount: regexResult.matches.length,
+        types,
+        summary: getPIISummary(regexResult.matches),
+      },
+      aiModerated: false,
+      aiResult: moderationResult.aiResult,
+    };
+  }
+
+  if (moderationResult.shouldBlock && moderationResult.aiResult) {
+    // AI detected obfuscated PII
+    const aiResult = moderationResult.aiResult;
+    return {
+      content: aiResult.suggestedRedaction || `${REPLACEMENT_MARKER} ${content}`,
+      originalContent: content,
+      piiScrubbed: true,
+      piiScrubDetails: {
+        matchCount: aiResult.detectedTypes.length,
+        types: aiResult.detectedTypes as PIIType[],
+        summary: {
+          phone_number: aiResult.detectedTypes.includes("phone") ? 1 : 0,
+          email_address: aiResult.detectedTypes.includes("email") ? 1 : 0,
+          url: aiResult.detectedTypes.includes("url") ? 1 : 0,
+          social_handle: aiResult.detectedTypes.includes("social_handle") ? 1 : 0,
+          contact_phrase: aiResult.detectedTypes.includes("contact_phrase") ||
+            aiResult.detectedTypes.includes("obfuscated_contact")
+            ? 1
+            : 0,
+        },
+      },
+      aiModerated: true,
+      aiResult,
+    };
+  }
+
+  // No PII detected by either method
+  return {
+    content: content,
+    originalContent: null,
+    piiScrubbed: false,
+    piiScrubDetails: null,
+    aiModerated: moderationResult.aiResult !== null,
+    aiResult: moderationResult.aiResult,
+  };
+}

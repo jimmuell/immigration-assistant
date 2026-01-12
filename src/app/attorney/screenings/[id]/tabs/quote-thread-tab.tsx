@@ -494,6 +494,20 @@ export function QuoteThreadTab({
             Contact information (phone, email, URLs) will be automatically
             removed from messages until a quote is accepted.
           </p>
+
+          {/* Powered by Claude branding */}
+          <div className="flex items-center justify-center gap-1.5 pt-2 text-xs text-muted-foreground/70">
+            <span>PII protection powered by</span>
+            <span className="font-medium text-muted-foreground">Claude</span>
+          </div>
+        </div>
+      )}
+
+      {/* Powered by Claude branding for closed threads */}
+      {isThreadClosed && (
+        <div className="flex items-center justify-center gap-1.5 pt-4 text-xs text-muted-foreground/70">
+          <span>PII protection powered by</span>
+          <span className="font-medium text-muted-foreground">Claude</span>
         </div>
       )}
     </div>

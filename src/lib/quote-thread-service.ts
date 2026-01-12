@@ -16,7 +16,7 @@ import {
   type NewQuoteThreadMessage,
 } from '@/lib/db/schema';
 import { eq, and, desc } from 'drizzle-orm';
-import { processMessageForQuoteThread, type ProcessedMessage } from '@/lib/pii-scrubber';
+import { processMessageWithAI, type AIEnhancedProcessedMessage } from '@/lib/pii-scrubber';
 
 // ============================================================================
 // TYPES
@@ -40,6 +40,7 @@ export interface SendMessageResult {
   message?: QuoteThreadMessage;
   error?: string;
   piiWasScrubbed?: boolean;
+  aiModerated?: boolean;
   rateLimitExceeded?: boolean;
 }
 
@@ -246,8 +247,8 @@ export async function sendMessage(params: SendMessageParams): Promise<SendMessag
     }
   }
 
-  // Process message for PII
-  const processed: ProcessedMessage = processMessageForQuoteThread(content);
+  // Process message for PII with AI-enhanced detection
+  const processed: AIEnhancedProcessedMessage = await processMessageWithAI(content);
 
   // Create message
   const [message] = await db
@@ -291,6 +292,7 @@ export async function sendMessage(params: SendMessageParams): Promise<SendMessag
     success: true,
     message,
     piiWasScrubbed: processed.piiScrubbed,
+    aiModerated: processed.aiModerated,
   };
 }
 
