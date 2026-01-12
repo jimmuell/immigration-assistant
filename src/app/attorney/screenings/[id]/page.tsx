@@ -35,6 +35,7 @@ export default async function AttorneyScreeningDetailPage({
       clientId: screenings.userId,
       clientName: users.name,
       clientEmail: users.email,
+      clientAnonymizedName: users.anonymizedDisplayName,
       assignedAttorneyId: screenings.assignedAttorneyId,
       reviewedForAttorneyId: screenings.reviewedForAttorneyId,
       organizationId: screenings.organizationId,
@@ -146,14 +147,20 @@ export default async function AttorneyScreeningDetailPage({
     .orderBy(desc(screeningDocuments.createdAt));
 
   // Fetch quote (if exists)
-  const quoteResults = screening.assignedAttorneyId ? await db
+  const quoteResults = await db
     .select()
     .from(quoteRequests)
     .where(eq(quoteRequests.screeningId, id))
     .orderBy(desc(quoteRequests.createdAt))
-    .limit(1) : [];
-  
+    .limit(1);
+
   const quote = quoteResults[0] || null;
+
+  // Determine client display name based on contact unlock status
+  const isContactUnlocked = quote?.isContactUnlocked || false;
+  const clientDisplayName = isContactUnlocked
+    ? screening.clientName || 'Client'
+    : screening.clientAnonymizedName || `Client #${screening.clientId.substring(0, 4).toUpperCase()}`;
 
   // Parse responses
   const responses = JSON.parse(screening.responses) as Array<{
@@ -208,6 +215,7 @@ export default async function AttorneyScreeningDetailPage({
         <ScreeningDetailClient
           screeningId={id}
           clientId={screening.clientId}
+          clientName={clientDisplayName}
           attorneyId={attorneyId!}
           responses={responses}
           messages={messages}

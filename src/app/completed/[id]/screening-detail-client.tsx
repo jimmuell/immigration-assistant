@@ -2,11 +2,12 @@
 
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, CheckCircle, Calendar, FileText, UserCheck, MessageSquare, DollarSign, Send, Lock } from "lucide-react";
+import { ArrowLeft, CheckCircle, Calendar, FileText, UserCheck, MessageSquare, MessagesSquare, DollarSign, Send, Lock } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MessagesTab } from "../../attorney/screenings/[id]/tabs/messages-tab";
 import { DocumentsTab } from "../../attorney/screenings/[id]/tabs/documents-tab";
+import { QuoteThreadTab } from "../../attorney/screenings/[id]/tabs/quote-thread-tab";
 import { useState } from "react";
 import { acceptQuote, declineQuote } from "./actions";
 import { submitForReview } from "../actions";
@@ -62,6 +63,7 @@ interface Quote {
   status: string;
   createdAt: Date;
   updatedAt: Date;
+  isContactUnlocked: boolean;
 }
 
 interface Screening {
@@ -70,6 +72,7 @@ interface Screening {
   submissionId: string;
   responses: string;
   status: string;
+  isLocked: boolean;
   createdAt: Date;
   updatedAt: Date;
   userId: string;
@@ -84,14 +87,16 @@ interface ScreeningDetailClientProps {
   documents: Document[];
   quote: Quote | null;
   clientId: string;
+  attorneyDisplayName: string;
 }
 
-export default function ScreeningDetailClient({ 
-  screening, 
-  messages, 
-  documents, 
-  quote, 
-  clientId 
+export default function ScreeningDetailClient({
+  screening,
+  messages,
+  documents,
+  quote,
+  clientId,
+  attorneyDisplayName,
 }: ScreeningDetailClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -321,7 +326,7 @@ export default function ScreeningDetailClient({
         <Card className="p-6">
           {screening.assignedAttorneyId ? (
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid w-full grid-cols-3 mb-6">
+              <TabsList className={`grid w-full mb-6 ${quote ? 'grid-cols-4' : 'grid-cols-3'}`}>
                 <TabsTrigger value="responses">
                   <FileText className="h-4 w-4 mr-2" />
                   Responses
@@ -335,6 +340,12 @@ export default function ScreeningDetailClient({
                     </span>
                   )}
                 </TabsTrigger>
+                {quote && (
+                  <TabsTrigger value="discussion">
+                    <MessagesSquare className="h-4 w-4 mr-2" />
+                    Discussion
+                  </TabsTrigger>
+                )}
                 <TabsTrigger value="documents">
                   <FileText className="h-4 w-4 mr-2" />
                   Documents
@@ -370,6 +381,19 @@ export default function ScreeningDetailClient({
                   messages={messages}
                 />
               </TabsContent>
+
+              {quote && (
+                <TabsContent value="discussion">
+                  <QuoteThreadTab
+                    screeningId={screening.id}
+                    quoteRequestId={quote.id}
+                    currentUserId={clientId}
+                    currentUserRole="client"
+                    clientName={attorneyDisplayName}
+                    isContactUnlocked={quote.isContactUnlocked || false}
+                  />
+                </TabsContent>
+              )}
 
               <TabsContent value="documents">
                 <DocumentsTab

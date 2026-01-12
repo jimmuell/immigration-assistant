@@ -9,11 +9,12 @@ import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { MessageSquare, FileText, DollarSign, ClipboardList } from "lucide-react";
+import { MessageSquare, FileText, DollarSign, ClipboardList, MessagesSquare } from "lucide-react";
 import { MessagesTab } from "./tabs/messages-tab";
 import { DocumentsTab } from "./tabs/documents-tab";
 import { QuoteTab } from "./tabs/quote-tab";
 import { ResponsesTab } from "./tabs/responses-tab";
+import { QuoteThreadTab } from "./tabs/quote-thread-tab";
 
 interface Response {
   question: string;
@@ -55,11 +56,13 @@ interface Quote {
   status: string;
   createdAt: Date;
   updatedAt: Date;
+  isContactUnlocked?: boolean;
 }
 
 interface ScreeningDetailClientProps {
   screeningId: string;
   clientId: string;
+  clientName: string;
   attorneyId: string;
   responses: Response[];
   messages: Message[];
@@ -71,6 +74,7 @@ interface ScreeningDetailClientProps {
 export default function ScreeningDetailClient({
   screeningId,
   clientId,
+  clientName,
   attorneyId,
   responses,
   messages,
@@ -84,10 +88,13 @@ export default function ScreeningDetailClient({
     (msg) => !msg.isRead && msg.receiverId === attorneyId
   ).length;
 
+  // Determine if we should show the discussion tab (only when a quote exists)
+  const showDiscussionTab = !!quote;
+
   return (
     <Card className="p-6">
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-4 mb-6">
+        <TabsList className={`grid w-full mb-6 ${showDiscussionTab ? 'grid-cols-5' : 'grid-cols-4'}`}>
           <TabsTrigger value="responses" className="flex items-center gap-2">
             <ClipboardList className="h-4 w-4" />
             <span className="hidden sm:inline">Responses</span>
@@ -101,6 +108,12 @@ export default function ScreeningDetailClient({
               </span>
             )}
           </TabsTrigger>
+          {showDiscussionTab && (
+            <TabsTrigger value="discussion" className="flex items-center gap-2">
+              <MessagesSquare className="h-4 w-4" />
+              <span className="hidden sm:inline">Discussion</span>
+            </TabsTrigger>
+          )}
           <TabsTrigger value="documents" className="flex items-center gap-2">
             <FileText className="h-4 w-4" />
             <span className="hidden sm:inline">Documents</span>
@@ -129,6 +142,19 @@ export default function ScreeningDetailClient({
             messages={messages}
           />
         </TabsContent>
+
+        {showDiscussionTab && quote && (
+          <TabsContent value="discussion">
+            <QuoteThreadTab
+              screeningId={screeningId}
+              quoteRequestId={quote.id}
+              currentUserId={attorneyId}
+              currentUserRole="attorney"
+              clientName={clientName}
+              isContactUnlocked={quote.isContactUnlocked || false}
+            />
+          </TabsContent>
+        )}
 
         <TabsContent value="documents">
           <DocumentsTab

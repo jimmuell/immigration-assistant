@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { screenings, users, attorneyClientMessages, screeningDocuments, quoteRequests } from "@/lib/db/schema";
-import { eq, and, or, desc } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import ScreeningDetailClient from "./screening-detail-client";
@@ -101,13 +101,22 @@ export default async function ScreeningDetailPage({ params }: ScreeningDetailPag
     .orderBy(desc(quoteRequests.createdAt))
     .limit(1);
 
+  // Determine attorney display name based on contact unlock status
+  // If contact is unlocked, show real name; otherwise show anonymized identifier
+  let attorneyDisplayName = screening.attorneyName || 'Attorney';
+  if (quote && !quote.isContactUnlocked && screening.assignedAttorneyId) {
+    // Use generic identifier when contact not unlocked
+    attorneyDisplayName = `Attorney #${screening.assignedAttorneyId.substring(0, 4).toUpperCase()}`;
+  }
+
   return (
-    <ScreeningDetailClient 
+    <ScreeningDetailClient
       screening={screening}
       messages={messages}
       documents={documents}
       quote={quote || null}
       clientId={session.user.id}
+      attorneyDisplayName={attorneyDisplayName}
     />
   );
 }
