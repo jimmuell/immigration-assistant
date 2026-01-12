@@ -6,6 +6,7 @@ import { X, Plus, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import type { FormNodeData, ValidationRule, FormField, FormFieldType } from '@/types';
 
 interface NodeEditorPanelProps {
@@ -20,10 +21,23 @@ export default function NodeEditorPanel({
   onClose 
 }: NodeEditorPanelProps) {
   const [formData, setFormData] = useState<FormNodeData>({});
+  // Track collapsed state for each field - default to collapsed (true)
+  const [collapsedFields, setCollapsedFields] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (selectedNode) {
       setFormData((selectedNode.data as FormNodeData) || {});
+      
+      // Initialize all fields as collapsed when node is selected
+      if (selectedNode.type === 'form') {
+        const nodeData = selectedNode.data as FormNodeData;
+        const fields = nodeData.formFields || [];
+        const initialCollapsedState: Record<string, boolean> = {};
+        fields.forEach(field => {
+          initialCollapsedState[field.id] = true; // Default to collapsed
+        });
+        setCollapsedFields(initialCollapsedState);
+      }
     }
   }, [selectedNode]);
 
@@ -88,6 +102,36 @@ export default function NodeEditorPanel({
       required: false,
     };
     handleUpdate({ formFields: [...formFields, newField] });
+    
+    // Expand newly added field
+    setCollapsedFields(prev => ({
+      ...prev,
+      [newField.id]: false
+    }));
+  };
+
+  // Get human-readable label for field type
+  const getFieldTypeLabel = (type: FormFieldType): string => {
+    const labels: Record<FormFieldType, string> = {
+      'text': 'Text Input',
+      'email': 'Email',
+      'phone': 'Phone Number',
+      'number': 'Number',
+      'date': 'Date',
+      'textarea': 'Text Area',
+      'select': 'Dropdown',
+      'radio': 'Radio Buttons',
+      'checkbox': 'Checkboxes',
+    };
+    return labels[type] || type;
+  };
+
+  // Toggle field collapsed state
+  const toggleFieldCollapsed = (fieldId: string) => {
+    setCollapsedFields(prev => ({
+      ...prev,
+      [fieldId]: !prev[fieldId]
+    }));
   };
 
   const updateFormField = (index: number, updates: Partial<FormField>) => {
@@ -97,8 +141,21 @@ export default function NodeEditorPanel({
   };
 
   const removeFormField = (index: number) => {
-    const formFields = formData.formFields?.filter((_, i) => i !== index) || [];
-    handleUpdate({ formFields });
+    const formFields = formData.formFields || [];
+    const fieldToRemove = formFields[index];
+    
+    // Remove the field
+    const updatedFields = formFields.filter((_, i) => i !== index);
+    handleUpdate({ formFields: updatedFields });
+    
+    // Clean up collapsed state
+    if (fieldToRemove) {
+      setCollapsedFields(prev => {
+        const updated = { ...prev };
+        delete updated[fieldToRemove.id];
+        return updated;
+      });
+    }
   };
 
   const addFieldOption = (fieldIndex: number) => {
@@ -380,164 +437,199 @@ export default function NodeEditorPanel({
               </Button>
             </div>
             <div className="space-y-3">
-              {(formData.formFields || []).map((field, fieldIndex) => (
-                <div key={field.id} className="p-3 border rounded-lg space-y-2 bg-muted/30">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1 space-y-2">
-                      {/* Field Type */}
-                      <div>
-                        <Label className="text-xs">Field Type</Label>
-                        <select
-                          value={field.type}
-                          onChange={(e) => updateFormField(fieldIndex, { 
-                            type: e.target.value as FormFieldType,
-                            options: ['select', 'radio', 'checkbox'].includes(e.target.value) ? (field.options || ['Option 1']) : undefined
-                          })}
-                          className="w-full text-xs border rounded px-2 py-1.5 mt-1"
+              {(formData.formFields || []).map((field, fieldIndex) => {
+                const isCollapsed = collapsedFields[field.id] ?? true;
+                
+                return (
+                  <Collapsible
+                    key={field.id}
+                    open={!isCollapsed}
+                    onOpenChange={() => toggleFieldCollapsed(field.id)}
+                  >
+                    <div className="border rounded-lg bg-muted/30">
+                      {/* Collapsible Header */}
+                      <div className="flex items-center justify-between gap-2 p-2 pr-3">
+                        <CollapsibleTrigger asChild>
+                          <button className="flex items-center gap-2 flex-1 text-left hover:opacity-80 transition-opacity">
+                            {isCollapsed ? (
+                              <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
+                            ) : (
+                              <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" />
+                            )}
+                            <span className="text-xs font-medium">
+                              {getFieldTypeLabel(field.type)}
+                            </span>
+                            {field.label && isCollapsed && (
+                              <span className="text-xs text-muted-foreground truncate">
+                                - {field.label}
+                              </span>
+                            )}
+                            {field.required && (
+                              <span className="text-xs text-red-500 shrink-0">*</span>
+                            )}
+                          </button>
+                        </CollapsibleTrigger>
+                        
+                        {/* Delete button */}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeFormField(fieldIndex)}
+                          className="shrink-0 h-7 w-7 p-0"
                         >
-                          <option value="text">Text Input</option>
-                          <option value="email">Email</option>
-                          <option value="phone">Phone Number</option>
-                          <option value="number">Number</option>
-                          <option value="date">Date</option>
-                          <option value="textarea">Text Area</option>
-                          <option value="select">Dropdown</option>
-                          <option value="radio">Radio Buttons</option>
-                          <option value="checkbox">Checkboxes</option>
-                        </select>
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
                       </div>
 
-                      {/* Field Label */}
-                      <div>
-                        <Label className="text-xs">Field Label</Label>
-                        <Input
-                          value={field.label}
-                          onChange={(e) => updateFormField(fieldIndex, { label: e.target.value })}
-                          placeholder="Enter field label"
-                          className="text-xs mt-1"
-                        />
-                      </div>
-
-                      {/* Placeholder (for applicable field types) */}
-                      {['text', 'email', 'phone', 'number', 'textarea'].includes(field.type) && (
-                        <div>
-                          <Label className="text-xs">Placeholder (Optional)</Label>
-                          <Input
-                            value={field.placeholder || ''}
-                            onChange={(e) => updateFormField(fieldIndex, { placeholder: e.target.value })}
-                            placeholder="Enter placeholder text"
-                            className="text-xs mt-1"
-                          />
-                        </div>
-                      )}
-
-                      {/* Options for select, radio, checkbox */}
-                      {['select', 'radio', 'checkbox'].includes(field.type) && (
-                        <div className="space-y-1">
-                          <div className="flex items-center justify-between">
-                            <Label className="text-xs">Options</Label>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => addFieldOption(fieldIndex)}
-                              className="h-6 text-xs px-2"
+                      {/* Collapsible Content */}
+                      <CollapsibleContent>
+                        <div className="px-3 pb-3 space-y-2 border-t pt-3">
+                          {/* Field Type */}
+                          <div>
+                            <Label className="text-xs">Field Type</Label>
+                            <select
+                              value={field.type}
+                              onChange={(e) => updateFormField(fieldIndex, { 
+                                type: e.target.value as FormFieldType,
+                                options: ['select', 'radio', 'checkbox'].includes(e.target.value) ? (field.options || ['Option 1']) : undefined
+                              })}
+                              className="w-full text-xs border rounded px-2 py-1.5 mt-1"
                             >
-                              <Plus className="h-3 w-3 mr-1" />
-                              Add
-                            </Button>
+                              <option value="text">Text Input</option>
+                              <option value="email">Email</option>
+                              <option value="phone">Phone Number</option>
+                              <option value="number">Number</option>
+                              <option value="date">Date</option>
+                              <option value="textarea">Text Area</option>
+                              <option value="select">Dropdown</option>
+                              <option value="radio">Radio Buttons</option>
+                              <option value="checkbox">Checkboxes</option>
+                            </select>
                           </div>
-                          <div className="space-y-1">
-                            {(field.options || []).map((option, optionIndex) => (
-                              <div key={optionIndex} className="flex gap-1">
-                                <Input
-                                  value={option}
-                                  onChange={(e) => updateFieldOption(fieldIndex, optionIndex, e.target.value)}
-                                  placeholder={`Option ${optionIndex + 1}`}
-                                  className="flex-1 text-xs h-7"
-                                />
+
+                          {/* Field Label */}
+                          <div>
+                            <Label className="text-xs">Field Label</Label>
+                            <Input
+                              value={field.label}
+                              onChange={(e) => updateFormField(fieldIndex, { label: e.target.value })}
+                              placeholder="Enter field label"
+                              className="text-xs mt-1"
+                            />
+                          </div>
+
+                          {/* Placeholder (for applicable field types) */}
+                          {['text', 'email', 'phone', 'number', 'textarea'].includes(field.type) && (
+                            <div>
+                              <Label className="text-xs">Placeholder (Optional)</Label>
+                              <Input
+                                value={field.placeholder || ''}
+                                onChange={(e) => updateFormField(fieldIndex, { placeholder: e.target.value })}
+                                placeholder="Enter placeholder text"
+                                className="text-xs mt-1"
+                              />
+                            </div>
+                          )}
+
+                          {/* Options for select, radio, checkbox */}
+                          {['select', 'radio', 'checkbox'].includes(field.type) && (
+                            <div className="space-y-1">
+                              <div className="flex items-center justify-between">
+                                <Label className="text-xs">Options</Label>
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  onClick={() => removeFieldOption(fieldIndex, optionIndex)}
-                                  className="shrink-0 h-7 w-7 p-0"
+                                  onClick={() => addFieldOption(fieldIndex)}
+                                  className="h-6 text-xs px-2"
                                 >
-                                  <Trash2 className="h-3 w-3" />
+                                  <Plus className="h-3 w-3 mr-1" />
+                                  Add
                                 </Button>
                               </div>
-                            ))}
+                              <div className="space-y-1">
+                                {(field.options || []).map((option, optionIndex) => (
+                                  <div key={optionIndex} className="flex gap-1">
+                                    <Input
+                                      value={option}
+                                      onChange={(e) => updateFieldOption(fieldIndex, optionIndex, e.target.value)}
+                                      placeholder={`Option ${optionIndex + 1}`}
+                                      className="flex-1 text-xs h-7"
+                                    />
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => removeFieldOption(fieldIndex, optionIndex)}
+                                      className="shrink-0 h-7 w-7 p-0"
+                                    >
+                                      <Trash2 className="h-3 w-3" />
+                                    </Button>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Default Value */}
+                          <div>
+                            <Label className="text-xs">Default Value (Optional)</Label>
+                            {field.type === 'date' ? (
+                              <Input
+                                type="date"
+                                value={field.defaultValue || ''}
+                                onChange={(e) => updateFormField(fieldIndex, { defaultValue: e.target.value })}
+                                className="text-xs mt-1"
+                              />
+                            ) : field.type === 'checkbox' ? (
+                              <select
+                                value={field.defaultValue || ''}
+                                onChange={(e) => updateFormField(fieldIndex, { defaultValue: e.target.value })}
+                                className="w-full text-xs border rounded px-2 py-1.5 mt-1"
+                              >
+                                <option value="">None</option>
+                                {(field.options || []).map((option, idx) => (
+                                  <option key={idx} value={option}>{option}</option>
+                                ))}
+                              </select>
+                            ) : ['select', 'radio'].includes(field.type) ? (
+                              <select
+                                value={field.defaultValue || ''}
+                                onChange={(e) => updateFormField(fieldIndex, { defaultValue: e.target.value })}
+                                className="w-full text-xs border rounded px-2 py-1.5 mt-1"
+                              >
+                                <option value="">None</option>
+                                {(field.options || []).map((option, idx) => (
+                                  <option key={idx} value={option}>{option}</option>
+                                ))}
+                              </select>
+                            ) : (
+                              <Input
+                                value={field.defaultValue || ''}
+                                onChange={(e) => updateFormField(fieldIndex, { defaultValue: e.target.value })}
+                                placeholder="Enter default value"
+                                className="text-xs mt-1"
+                              />
+                            )}
+                          </div>
+
+                          {/* Required checkbox */}
+                          <div className="flex items-center gap-2 pt-1">
+                            <input
+                              type="checkbox"
+                              id={`required-${field.id}`}
+                              checked={field.required || false}
+                              onChange={(e) => updateFormField(fieldIndex, { required: e.target.checked })}
+                              className="rounded border-gray-300"
+                            />
+                            <Label htmlFor={`required-${field.id}`} className="text-xs cursor-pointer">
+                              Required field
+                            </Label>
                           </div>
                         </div>
-                      )}
-
-                      {/* Default Value */}
-                      <div>
-                        <Label className="text-xs">Default Value (Optional)</Label>
-                        {field.type === 'date' ? (
-                          <Input
-                            type="date"
-                            value={field.defaultValue || ''}
-                            onChange={(e) => updateFormField(fieldIndex, { defaultValue: e.target.value })}
-                            className="text-xs mt-1"
-                          />
-                        ) : field.type === 'checkbox' ? (
-                          <select
-                            value={field.defaultValue || ''}
-                            onChange={(e) => updateFormField(fieldIndex, { defaultValue: e.target.value })}
-                            className="w-full text-xs border rounded px-2 py-1.5 mt-1"
-                          >
-                            <option value="">None</option>
-                            {(field.options || []).map((option, idx) => (
-                              <option key={idx} value={option}>{option}</option>
-                            ))}
-                          </select>
-                        ) : ['select', 'radio'].includes(field.type) ? (
-                          <select
-                            value={field.defaultValue || ''}
-                            onChange={(e) => updateFormField(fieldIndex, { defaultValue: e.target.value })}
-                            className="w-full text-xs border rounded px-2 py-1.5 mt-1"
-                          >
-                            <option value="">None</option>
-                            {(field.options || []).map((option, idx) => (
-                              <option key={idx} value={option}>{option}</option>
-                            ))}
-                          </select>
-                        ) : (
-                          <Input
-                            value={field.defaultValue || ''}
-                            onChange={(e) => updateFormField(fieldIndex, { defaultValue: e.target.value })}
-                            placeholder="Enter default value"
-                            className="text-xs mt-1"
-                          />
-                        )}
-                      </div>
-
-                      {/* Required checkbox */}
-                      <div className="flex items-center gap-2 pt-1">
-                        <input
-                          type="checkbox"
-                          id={`required-${field.id}`}
-                          checked={field.required || false}
-                          onChange={(e) => updateFormField(fieldIndex, { required: e.target.checked })}
-                          className="rounded border-gray-300"
-                        />
-                        <Label htmlFor={`required-${field.id}`} className="text-xs cursor-pointer">
-                          Required field
-                        </Label>
-                      </div>
+                      </CollapsibleContent>
                     </div>
-
-                    {/* Delete button */}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => removeFormField(fieldIndex)}
-                      className="shrink-0 h-7 w-7 p-0"
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
+                  </Collapsible>
+                );
+              })}
               {(formData.formFields || []).length === 0 && (
                 <p className="text-xs text-muted-foreground text-center py-4">
                   No fields added yet. Click "Add field..." to start.

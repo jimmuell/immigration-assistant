@@ -3,7 +3,7 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, CheckCircle, Calendar, FileText, UserCheck, MessageSquare, DollarSign, Send, Lock } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MessagesTab } from "../../attorney/screenings/[id]/tabs/messages-tab";
 import { DocumentsTab } from "../../attorney/screenings/[id]/tabs/documents-tab";
@@ -94,6 +94,8 @@ export default function ScreeningDetailClient({
   clientId 
 }: ScreeningDetailClientProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const from = searchParams.get('from');
   const [activeTab, setActiveTab] = useState("responses");
   const [showAcceptDialog, setShowAcceptDialog] = useState(false);
   const [showDeclineDialog, setShowDeclineDialog] = useState(false);
@@ -210,11 +212,11 @@ export default function ScreeningDetailClient({
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => router.push('/completed')}
+            onClick={() => router.push(from === 'quotes' ? '/my-quotes' : '/completed')}
             className="mb-4"
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Completed
+            {from === 'quotes' ? 'Back to My Quotes' : 'Back to Completed'}
           </Button>
 
           <div className="flex items-start justify-between">

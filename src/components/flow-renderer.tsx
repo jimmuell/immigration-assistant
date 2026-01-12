@@ -42,11 +42,13 @@ export function FlowRenderer({ markdown, flowId, flowName, savedScreening, userR
   const [stepAnswers, setStepAnswers] = useState<Record<string, any>>({});
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [screeningId, setScreeningId] = useState<string | null>(savedScreening?.id || null);
-  const [isTestMode, setIsTestMode] = useState(false);
   const router = useRouter();
   
   // Check if user is admin or staff
   const canUseTestMode = userRole === 'org_admin' || userRole === 'staff' || userRole === 'super_admin';
+  
+  // Admin screenings should ALWAYS be in test mode
+  const [isTestMode, setIsTestMode] = useState(canUseTestMode || false);
   
   useEffect(() => {
     try {
@@ -305,9 +307,10 @@ export function FlowRenderer({ markdown, flowId, flowName, savedScreening, userR
         description: `Submission ID: ${data.submissionId}`,
       });
       
-      // Navigate to completed page after a brief delay
+      // Navigate to appropriate page based on test mode
+      const redirectPath = isTestMode ? '/test-screenings' : '/completed';
       setTimeout(() => {
-        router.push('/completed');
+        router.push(redirectPath);
       }, 1500);
     } catch (error) {
       console.error('Error saving screening:', error);
@@ -385,9 +388,26 @@ export function FlowRenderer({ markdown, flowId, flowName, savedScreening, userR
           <div className="flex items-start gap-3">
             <AlertCircle className="h-5 w-5 mt-0.5 shrink-0 text-yellow-600" />
             <div>
-              <p className="font-semibold text-foreground mb-2">No valid flow to preview</p>
-              <p className="text-sm mb-3">The preview requires a flow definition in JSON format. Add a JSON code block with the following structure:</p>
-              <pre className="text-xs bg-muted p-3 rounded overflow-x-auto">
+              <p className="font-semibold text-foreground mb-2">Flow Not Ready for Preview</p>
+              {!flow && (
+                <>
+                  <p className="text-sm mb-3">The flow is empty or has no valid structure. To preview your flow:</p>
+                  <ul className="text-sm mb-3 list-disc list-inside space-y-1">
+                    <li>Add a <strong>Start</strong> node to begin the flow</li>
+                    <li>Add question nodes (Yes/No, Multiple Choice, Text Input, etc.)</li>
+                    <li>Connect nodes by dragging from output to input handles</li>
+                    <li>Add an <strong>End</strong> or <strong>Success</strong> node to complete the flow</li>
+                  </ul>
+                </>
+              )}
+              {flow && !currentStepId && (
+                <>
+                  <p className="text-sm mb-3">The flow is missing a start node. Add a <strong>Start</strong> node to enable preview.</p>
+                </>
+              )}
+              <details className="text-xs mt-4">
+                <summary className="cursor-pointer font-medium mb-2">Expected JSON structure</summary>
+                <pre className="bg-muted p-3 rounded overflow-x-auto mt-2">
 {`\`\`\`json
 {
   "name": "Flow Name",
@@ -416,6 +436,7 @@ export function FlowRenderer({ markdown, flowId, flowName, savedScreening, userR
 }
 \`\`\`
 `}</pre>
+              </details>
             </div>
           </div>
         </div>
@@ -473,17 +494,18 @@ export function FlowRenderer({ markdown, flowId, flowName, savedScreening, userR
           
           {canUseTestMode && (
             <div className="mb-6 p-4 border border-amber-300 bg-amber-50 rounded-lg">
-              <label className="flex items-center gap-3 cursor-pointer">
+              <label className="flex items-center gap-3">
                 <input
                   type="checkbox"
                   checked={isTestMode}
                   onChange={(e) => setIsTestMode(e.target.checked)}
-                  className="w-5 h-5 text-[#0D7DB9] rounded border-gray-300 focus:ring-2 focus:ring-[#0D7DB9]"
+                  disabled={true}
+                  className="w-5 h-5 text-[#0D7DB9] rounded border-gray-300 focus:ring-2 focus:ring-[#0D7DB9] disabled:opacity-50 disabled:cursor-not-allowed"
                 />
                 <div>
-                  <span className="font-semibold text-amber-900">Test Mode</span>
+                  <span className="font-semibold text-amber-900">Test Mode (Always On for Admins)</span>
                   <p className="text-sm text-amber-800">
-                    Mark this as a test screening (will be kept separate from client submissions)
+                    Admin screenings are automatically saved as test screenings
                   </p>
                 </div>
               </label>

@@ -42,14 +42,14 @@ export function AdminMobileNav() {
       icon: ClipboardList,
     },
     {
-      name: "Settings",
-      href: "/admin/settings",
-      icon: Settings,
-    },
-    {
       name: "Test Screenings",
       href: "/test-screenings",
       icon: FlaskConical,
+    },
+    {
+      name: "Settings",
+      href: "/admin/settings",
+      icon: Settings,
     },
   ];
 

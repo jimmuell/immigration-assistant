@@ -101,7 +101,7 @@ export function TestScreeningsClient({ screenings: initialScreenings }: TestScre
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <Link href={`/completed/${screening.id}`}>
+                <Link href={`/test-screenings/${screening.id}`}>
                   <Button variant="ghost" size="sm" className="hover:bg-amber-100">
                     <span>View</span>
                     <ArrowRight className="ml-1 h-4 w-4" />

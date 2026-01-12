@@ -1,33 +1,55 @@
 'use client';
 
-import { memo } from 'react';
+import { memo, useState } from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
-import { GitBranch } from 'lucide-react';
+import { GitBranch, ChevronDown, ChevronUp } from 'lucide-react';
 import type { FormNodeData } from '@/types';
 
 export default memo(function SubflowNode({ data }: NodeProps) {
   const nodeData = data as FormNodeData;
+  const [isCollapsed, setIsCollapsed] = useState(nodeData.collapsed ?? true);
+  const isHighlighted = nodeData.highlighted;
+  
   return (
-    <div className="px-4 py-3 rounded-lg border-2 bg-card min-w-[200px] shadow-sm border-pink-500">
+    <div className={`w-[250px] px-4 py-3 rounded-lg border-2 bg-card shadow-sm border-pink-500 transition-all ${
+      isHighlighted ? 'ring-4 ring-blue-400 ring-opacity-75 animate-pulse' : ''
+    }`}>
       <Handle 
         type="target" 
         position={Position.Top} 
         className="!w-3 !h-3 !bg-pink-500 !border-2 !border-white"
       />
       
-      <div className="flex items-center gap-2 mb-2">
+      {/* Header - Always Visible */}
+      <div className="flex items-center gap-2 mb-1">
         <div className="flex-shrink-0 w-6 h-6 rounded-full bg-pink-500 flex items-center justify-center">
           <GitBranch className="h-3 w-3 text-white" />
         </div>
-        <div className="font-medium text-sm">Subflow</div>
+        <div className="font-medium text-sm flex-1">Subflow</div>
+        <button
+          onClick={() => setIsCollapsed(!isCollapsed)}
+          className="flex-shrink-0 p-0.5 hover:bg-muted rounded transition-colors"
+          aria-label={isCollapsed ? "Expand node" : "Collapse node"}
+        >
+          {isCollapsed ? (
+            <ChevronDown className="h-3 w-3 text-muted-foreground" />
+          ) : (
+            <ChevronUp className="h-3 w-3 text-muted-foreground" />
+          )}
+        </button>
       </div>
       
-      {nodeData.label && (
-        <div className="text-xs mb-1 font-medium text-foreground">{nodeData.label}</div>
-      )}
-      
-      {nodeData.subflowId && (
-        <div className="text-xs text-muted-foreground">ID: {nodeData.subflowId}</div>
+      {/* Expanded Content */}
+      {!isCollapsed && (
+        <>
+          {nodeData.label && (
+            <div className="text-xs mb-1 font-medium text-foreground break-words whitespace-normal">{nodeData.label}</div>
+          )}
+          
+          {nodeData.subflowId && (
+            <div className="text-xs text-muted-foreground break-words whitespace-normal">ID: {nodeData.subflowId}</div>
+          )}
+        </>
       )}
       
       <Handle 

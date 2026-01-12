@@ -42,13 +42,26 @@ export async function getFlow(flowId: string) {
 }
 
 export async function saveFlowNodes(flowId: string, nodes: FormNode[]) {
-  // Only super admins can edit flows
+  // Org admins and super admins can edit flows
   const session = await auth();
-  if (!session || session.user.role !== 'super_admin') {
-    return { error: 'Unauthorized: Flow management requires Super Admin role' };
+  if (!session || !['org_admin', 'super_admin'].includes(session.user.role)) {
+    return { error: 'Unauthorized: Flow management requires Organization Admin or Super Admin role' };
   }
 
   try {
+    // Check flow ownership
+    const [flow] = await db.select().from(flows).where(eq(flows.id, flowId));
+    if (!flow) {
+      return { error: 'Flow not found' };
+    }
+
+    // Org admins can only edit their organization's flows
+    if (session.user.role === 'org_admin') {
+      if (flow.organizationId !== session.user.organizationId) {
+        return { error: 'Unauthorized: You can only edit flows belonging to your organization' };
+      }
+    }
+
     // Delete existing nodes for this flow
     await db.delete(formNodes).where(eq(formNodes.flowId, flowId));
 
@@ -74,13 +87,26 @@ export async function saveFlowNodes(flowId: string, nodes: FormNode[]) {
 }
 
 export async function saveFlowEdges(flowId: string, edges: FormEdge[]) {
-  // Only super admins can edit flows
+  // Org admins and super admins can edit flows
   const session = await auth();
-  if (!session || session.user.role !== 'super_admin') {
-    return { error: 'Unauthorized: Flow management requires Super Admin role' };
+  if (!session || !['org_admin', 'super_admin'].includes(session.user.role)) {
+    return { error: 'Unauthorized: Flow management requires Organization Admin or Super Admin role' };
   }
 
   try {
+    // Check flow ownership
+    const [flow] = await db.select().from(flows).where(eq(flows.id, flowId));
+    if (!flow) {
+      return { error: 'Flow not found' };
+    }
+
+    // Org admins can only edit their organization's flows
+    if (session.user.role === 'org_admin') {
+      if (flow.organizationId !== session.user.organizationId) {
+        return { error: 'Unauthorized: You can only edit flows belonging to your organization' };
+      }
+    }
+
     // Delete existing edges for this flow
     await db.delete(formEdges).where(eq(formEdges.flowId, flowId));
 
@@ -108,13 +134,26 @@ export async function saveFlowEdges(flowId: string, edges: FormEdge[]) {
 }
 
 export async function updateFlowContent(flowId: string, content: string) {
-  // Only super admins can edit flows
+  // Org admins and super admins can edit flows
   const session = await auth();
-  if (!session || session.user.role !== 'super_admin') {
-    return { error: 'Unauthorized: Flow management requires Super Admin role' };
+  if (!session || !['org_admin', 'super_admin'].includes(session.user.role)) {
+    return { error: 'Unauthorized: Flow management requires Organization Admin or Super Admin role' };
   }
 
   try {
+    // Check flow ownership
+    const [flow] = await db.select().from(flows).where(eq(flows.id, flowId));
+    if (!flow) {
+      return { error: 'Flow not found' };
+    }
+
+    // Org admins can only edit their organization's flows
+    if (session.user.role === 'org_admin') {
+      if (flow.organizationId !== session.user.organizationId) {
+        return { error: 'Unauthorized: You can only edit flows belonging to your organization' };
+      }
+    }
+
     await db.update(flows)
       .set({ content, updatedAt: new Date() })
       .where(eq(flows.id, flowId));

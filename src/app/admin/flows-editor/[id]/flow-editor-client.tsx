@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState, useRef, useMemo } from 'react';
+import { useCallback, useState, useRef, useMemo, useEffect } from 'react';
 import { 
   ReactFlow, 
   Background, 
@@ -18,39 +18,46 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { saveFlowNodes, saveFlowEdges, updateFlowContent } from '../actions';
 import type { FormNode as FormNodeType, FormEdge as FormEdgeType, NodeType, FormNodeData } from '@/types';
-import { ArrowLeft, HelpCircle, Info, Save, Eye } from 'lucide-react';
+import { ArrowLeft, HelpCircle, Save, Eye, ChevronsUp, ChevronsDown, AlertCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { nodeTypes } from '@/components/flow-editor/nodes';
 import ComponentSidebar from '@/components/flow-editor/ComponentSidebar';
 import NodeEditorPanel from '@/components/flow-editor/NodeEditorPanel';
-import { useAutoSave } from '@/hooks/useAutoSave';
 import { toast } from 'sonner';
 import { FlowPreviewModal } from '@/components/flow-editor/FlowPreviewModal';
+import { ValidationDialog, UnsavedChangesDialog, type ValidationError } from '@/components/flow-editor/ValidationDialog';
 
 interface FlowEditorClientProps {
   flowId: string;
   flowName: string;
   initialNodes: FormNodeType[];
   initialEdges: FormEdgeType[];
+  userRole?: string;
 }
 
 export default function FlowEditorClient({ 
   flowId, 
   flowName,
   initialNodes, 
-  initialEdges 
+  initialEdges,
+  userRole 
 }: FlowEditorClientProps) {
   const router = useRouter();
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>(initialNodes as Node[]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(initialEdges as Edge[]);
   const [isSaving, setIsSaving] = useState(false);
-  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'error' | ''>('');
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
   const [reactFlowInstance, setReactFlowInstance] = useState<any>(null);
   const [showPreview, setShowPreview] = useState(false);
+  const [showValidationDialog, setShowValidationDialog] = useState(false);
+  const [validationContext, setValidationContext] = useState<'save' | 'preview'>('save');
+  const [showUnsavedChangesDialog, setShowUnsavedChangesDialog] = useState(false);
+  const [pendingNavigation, setPendingNavigation] = useState<string | null>(null);
 
   // Convert visual flow to markdown/JSON format
   const flowMarkdown = useMemo(() => {
@@ -58,63 +65,196 @@ export default function FlowEditorClient({
   }, [nodes, edges]);
 
   // Validate the flow before saving
-  const validateFlow = useCallback(() => {
-    const errors: string[] = [];
+  const validateFlow = useCallback((): ValidationError[] => {
+    const errors: ValidationError[] = [];
     
-    // Check for disconnected nodes (nodes without outgoing edges, except End nodes)
+    // Check for empty flow
+    if (nodes.length === 0) {
+      errors.push({
+        type: 'error',
+        message: 'Cannot save an empty flow. Add at least a Start node, question nodes, and an End node.',
+      });
+      return errors;
+    }
+    
+    // Check for start node
+    const startNode = nodes.find(node => node.type === 'start');
+    if (!startNode) {
+      errors.push({
+        type: 'error',
+        message: 'Flow must have a Start node',
+      });
+    }
+
+    // Check for at least one end node
+    const hasEndNode = nodes.some(node => node.type === 'end' || node.type === 'success');
+    if (!hasEndNode) {
+      errors.push({
+        type: 'error',
+        message: 'Flow must have at least one End or Success node',
+      });
+    }
+
+    // Terminal nodes are only nodes that should end the flow
+    const terminalNodeTypes = ['end', 'success'];
+    
+    // Check each node for proper connections
     nodes.forEach(node => {
-      const isEndNode = node.type === 'end' || node.type === 'success';
-      const hasOutgoingEdge = edges.some(edge => edge.source === node.id);
+      const nodeLabel = (node.data as any).label || node.type;
+      const isTerminalNode = terminalNodeTypes.includes(node.type || '');
+      const isStartNode = node.type === 'start';
       
-      if (!isEndNode && !hasOutgoingEdge) {
-        const nodeLabel = (node.data as any).label || node.type;
-        errors.push(`Node "${nodeLabel}" (ID: ${node.id}) has no connections to next steps`);
+      // Check for incoming connections (all nodes except start should have incoming edges)
+      if (!isStartNode) {
+        const hasIncomingEdge = edges.some(edge => edge.target === node.id);
+        if (!hasIncomingEdge) {
+          errors.push({
+            type: 'error',
+            message: `Node is not connected to any previous step`,
+            nodeId: node.id,
+            nodeLabel,
+          });
+        }
+      }
+      
+      // Check for outgoing connections (all nodes except terminal nodes should have outgoing edges)
+      if (!isTerminalNode) {
+        const hasOutgoingEdge = edges.some(edge => edge.source === node.id);
+        if (!hasOutgoingEdge) {
+          errors.push({
+            type: 'error',
+            message: `Node has no connections to next steps`,
+            nodeId: node.id,
+            nodeLabel,
+          });
+        }
       }
     });
+
+    // Check for reachability - all nodes should be reachable from start
+    if (startNode) {
+      const reachableNodes = new Set<string>();
+      const queue = [startNode.id];
+      
+      while (queue.length > 0) {
+        const currentId = queue.shift()!;
+        if (reachableNodes.has(currentId)) continue;
+        
+        reachableNodes.add(currentId);
+        
+        // Add all nodes this node connects to
+        edges.forEach(edge => {
+          if (edge.source === currentId && !reachableNodes.has(edge.target)) {
+            queue.push(edge.target);
+          }
+        });
+      }
+      
+      // Check if any nodes are unreachable
+      nodes.forEach(node => {
+        if (!reachableNodes.has(node.id)) {
+          const nodeLabel = (node.data as any).label || node.type;
+          errors.push({
+            type: 'error',
+            message: `Node is unreachable from the Start node`,
+            nodeId: node.id,
+            nodeLabel,
+          });
+        }
+      });
+    }
 
     // Check for unsupported node types
     const supportedTypes = ['start', 'yes-no', 'text', 'form', 'end', 'success', 'multiple-choice', 'info', 'subflow', 'date'];
     nodes.forEach(node => {
       if (!supportedTypes.includes(node.type)) {
         const nodeLabel = (node.data as any).label || node.type;
-        errors.push(`Node "${nodeLabel}" has unsupported type "${node.type}". Remove this node and use a different type.`);
+        errors.push({
+          type: 'error',
+          message: `Unsupported node type "${node.type}". Remove this node and use a different type.`,
+          nodeId: node.id,
+          nodeLabel,
+        });
       }
       
       // Warn about date nodes (they work in editor but not in flow renderer yet)
       if (node.type === 'date') {
-        errors.push(`Date Picker nodes are not fully supported yet. Please use a Text Input node instead and ask for the date in the question.`);
+        errors.push({
+          type: 'warning',
+          message: 'Date Picker nodes are not fully supported yet. Please use a Text Input node instead and ask for the date in the question.',
+          nodeId: node.id,
+          nodeLabel: (node.data as any).label || node.type,
+        });
+      }
+      
+      // Warn about form nodes with no fields
+      if (node.type === 'form') {
+        const formData = node.data as FormNodeData;
+        const formFields = formData.formFields || [];
+        if (formFields.length === 0) {
+          const nodeLabel = formData.label || 'Form';
+          errors.push({
+            type: 'warning',
+            message: 'Form node has no fields. The flow can be saved but will not work properly when users try to fill it out. Add at least one field to make this form functional.',
+            nodeId: node.id,
+            nodeLabel,
+          });
+        }
       }
     });
-
-    // Check for start node
-    const hasStartNode = nodes.some(node => node.type === 'start');
-    if (!hasStartNode) {
-      errors.push('Flow must have a Start node');
-    }
-
-    // Check for at least one end node
-    const hasEndNode = nodes.some(node => node.type === 'end' || node.type === 'success');
-    if (!hasEndNode) {
-      errors.push('Flow must have at least one End or Success node');
-    }
 
     return errors;
   }, [nodes, edges]);
 
-  const handleSave = useCallback(async () => {
-    // Validate flow before saving
+  // Check if flow is valid (for status indicator)
+  const isFlowValid = useMemo(() => {
+    const errors = validateFlow();
+    return errors.length === 0;
+  }, [validateFlow]);
+
+  // Validate and show dialog before saving
+  const handleValidateAndSave = useCallback(() => {
     const validationErrors = validateFlow();
-    if (validationErrors.length > 0) {
-      toast.error('Flow has validation errors', {
-        description: validationErrors[0],
-        duration: 5000,
-      });
-      console.error('Flow validation errors:', validationErrors);
+    
+    // If there are no errors or warnings, save directly
+    if (validationErrors.length === 0) {
+      handleActualSave();
       return;
     }
+    
+    // Show validation dialog with errors/warnings
+    setValidationContext('save');
+    setShowValidationDialog(true);
+  }, [validateFlow]);
 
+  // Validate and show dialog before preview
+  const handleValidateAndPreview = useCallback(() => {
+    const validationErrors = validateFlow();
+    
+    // If there are no errors or warnings, show preview directly
+    if (validationErrors.length === 0) {
+      setShowPreview(true);
+      return;
+    }
+    
+    // Check if there are only warnings (no errors)
+    const hasErrors = validationErrors.some(e => e.type === 'error');
+    
+    if (!hasErrors) {
+      // Only warnings - show preview with a note
+      setShowPreview(true);
+      return;
+    }
+    
+    // Show validation dialog with errors/warnings
+    setValidationContext('preview');
+    setShowValidationDialog(true);
+  }, [validateFlow]);
+
+  // Actual save function (called after validation passes)
+  const handleActualSave = useCallback(async () => {
     setIsSaving(true);
-    setSaveStatus('saving');
+    setShowValidationDialog(false);
 
     try {
       const nodesResult = await saveFlowNodes(flowId, nodes as FormNodeType[]);
@@ -124,52 +264,63 @@ export default function FlowEditorClient({
       await updateFlowContent(flowId, flowMarkdown);
 
       if (nodesResult.error || edgesResult.error) {
-        setSaveStatus('error');
         toast.error('Error saving flow', {
           description: nodesResult.error || edgesResult.error
         });
       } else {
-        setSaveStatus('saved');
+        setHasUnsavedChanges(false);
         toast.success('Flow saved successfully');
-        setTimeout(() => setSaveStatus(''), 2000);
       }
     } catch (error) {
-      setSaveStatus('error');
       toast.error('Error saving flow', {
         description: error instanceof Error ? error.message : 'Unknown error'
       });
     } finally {
       setIsSaving(false);
     }
-  }, [flowId, nodes, edges, flowMarkdown, validateFlow]);
-
-  const { triggerAutoSave } = useAutoSave({
-    delay: 3000,
-    onSave: handleSave,
-  });
+  }, [flowId, nodes, edges, flowMarkdown]);
 
   const onConnect = useCallback(
     (params: Connection) => {
       setEdges((eds) => addEdge(params, eds));
-      triggerAutoSave();
+      setHasUnsavedChanges(true);
     },
-    [setEdges, triggerAutoSave]
+    [setEdges]
   );
 
   const handleNodesChange = useCallback(
     (changes: NodeChange[]) => {
       onNodesChange(changes);
-      triggerAutoSave();
+      
+      // Only mark as unsaved for actual modifications, not internal state changes
+      const hasModifications = changes.some(change => 
+        change.type === 'add' || 
+        change.type === 'remove' || 
+        (change.type === 'position' && change.dragging === false) // Only when drag ends
+      );
+      
+      if (hasModifications) {
+        setHasUnsavedChanges(true);
+      }
     },
-    [onNodesChange, triggerAutoSave]
+    [onNodesChange]
   );
 
   const handleEdgesChange = useCallback(
     (changes: EdgeChange[]) => {
       onEdgesChange(changes);
-      triggerAutoSave();
+      
+      // Only mark as unsaved for actual modifications
+      const hasModifications = changes.some(change => 
+        change.type === 'add' || 
+        change.type === 'remove'
+      );
+      
+      if (hasModifications) {
+        setHasUnsavedChanges(true);
+      }
     },
-    [onEdgesChange, triggerAutoSave]
+    [onEdgesChange]
   );
 
   const onNodeClick = useCallback((_event: React.MouseEvent, node: Node) => {
@@ -190,9 +341,9 @@ export default function FlowEditorClient({
           return node;
         })
       );
-      triggerAutoSave();
+      setHasUnsavedChanges(true);
     },
-    [setNodes, triggerAutoSave]
+    [setNodes]
   );
 
   const onDragOver = useCallback((event: React.DragEvent) => {
@@ -228,9 +379,9 @@ export default function FlowEditorClient({
       };
 
       setNodes((nds) => nds.concat(newNode));
-      triggerAutoSave();
+      setHasUnsavedChanges(true);
     },
-    [reactFlowInstance, setNodes, triggerAutoSave]
+    [reactFlowInstance, setNodes]
   );
 
   const handleAddNode = useCallback(
@@ -245,10 +396,108 @@ export default function FlowEditorClient({
       };
 
       setNodes((nds) => nds.concat(newNode));
-      triggerAutoSave();
+      setHasUnsavedChanges(true);
     },
-    [setNodes, triggerAutoSave]
+    [setNodes]
   );
+
+  const handleCollapseAll = useCallback(() => {
+    setNodes((nds) =>
+      nds.map((node) => ({
+        ...node,
+        data: { ...node.data, collapsed: true },
+      }))
+    );
+  }, [setNodes]);
+
+  const handleExpandAll = useCallback(() => {
+    setNodes((nds) =>
+      nds.map((node) => ({
+        ...node,
+        data: { ...node.data, collapsed: false },
+      }))
+    );
+  }, [setNodes]);
+
+  // Navigate to and select a specific node
+  const handleNavigateToNode = useCallback((nodeId: string) => {
+    const node = nodes.find(n => n.id === nodeId);
+    if (node && reactFlowInstance) {
+      // Select the node
+      setSelectedNode(node);
+      
+      // Focus the node on the canvas with smooth animation
+      reactFlowInstance.setCenter(node.position.x + 150, node.position.y + 50, {
+        zoom: 1.2,
+        duration: 500,
+      });
+
+      // Flash the node to draw attention (update its data to trigger re-render)
+      setNodes((nds) =>
+        nds.map((n) => {
+          if (n.id === nodeId) {
+            return { 
+              ...n, 
+              data: { ...n.data, highlighted: true }
+            };
+          }
+          return n;
+        })
+      );
+
+      // Remove highlight after animation
+      setTimeout(() => {
+        setNodes((nds) =>
+          nds.map((n) => {
+            if (n.id === nodeId) {
+              return { 
+                ...n, 
+                data: { ...n.data, highlighted: false }
+              };
+            }
+            return n;
+          })
+        );
+      }, 1500);
+    }
+  }, [nodes, reactFlowInstance, setNodes]);
+
+  // Add beforeunload warning for unsaved changes (browser native dialog)
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+        // Modern browsers ignore custom messages and show their own
+        e.returnValue = 'You have unsaved changes. Are you sure you want to leave?';
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [hasUnsavedChanges]);
+
+  // Handle navigation with custom dialog
+  const handleNavigateAway = useCallback((destination: string) => {
+    if (hasUnsavedChanges) {
+      setPendingNavigation(destination);
+      setShowUnsavedChangesDialog(true);
+    } else {
+      router.push(destination);
+    }
+  }, [hasUnsavedChanges, router]);
+
+  const handleConfirmNavigation = useCallback(() => {
+    setShowUnsavedChangesDialog(false);
+    if (pendingNavigation) {
+      router.push(pendingNavigation);
+      setPendingNavigation(null);
+    }
+  }, [pendingNavigation, router]);
+
+  const handleCancelNavigation = useCallback(() => {
+    setShowUnsavedChangesDialog(false);
+    setPendingNavigation(null);
+  }, []);
 
   return (
     <div className="fixed inset-0 flex flex-col bg-background">
@@ -258,7 +507,7 @@ export default function FlowEditorClient({
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => router.push('/admin/flows')}
+            onClick={() => handleNavigateAway('/admin/flows')}
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
             Dashboard
@@ -269,21 +518,50 @@ export default function FlowEditorClient({
           <h1 className="text-lg font-semibold">{flowName}</h1>
         </div>
         <div className="flex items-center gap-2">
-          {saveStatus && (
-            <span className={`text-sm mr-2 ${
-              saveStatus === 'saved' ? 'text-green-600' : 
-              saveStatus === 'saving' ? 'text-muted-foreground' : 
-              'text-red-600'
-            }`}>
-              {saveStatus === 'saved' ? '✓ Saved' : 
-               saveStatus === 'saving' ? 'Saving...' : 
-               'Error'}
-            </span>
+          {/* Unsaved Changes Indicator */}
+          {hasUnsavedChanges && (
+            <Badge variant="outline" className="gap-1">
+              <AlertCircle className="h-3 w-3" />
+              Unsaved Changes
+            </Badge>
           )}
+          
+          {/* Validation Status */}
+          {nodes.length > 0 && (
+            <Badge 
+              variant="outline"
+              className={
+                isFlowValid 
+                  ? 'bg-green-500 text-white border-green-600 hover:bg-green-600 dark:bg-green-600 dark:border-green-700 font-medium' 
+                  : 'bg-yellow-500 text-gray-900 border-yellow-600 hover:bg-yellow-600 dark:bg-yellow-600 dark:text-gray-900 dark:border-yellow-700 font-medium'
+              }
+            >
+              {isFlowValid ? '✓ Valid' : '⚠ Incomplete'}
+            </Badge>
+          )}
+          
           <Button 
             variant="outline" 
             size="sm"
-            onClick={() => setShowPreview(true)}
+            onClick={handleCollapseAll}
+            title="Collapse all nodes"
+          >
+            <ChevronsUp className="h-4 w-4 mr-2" />
+            Collapse All
+          </Button>
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={handleExpandAll}
+            title="Expand all nodes"
+          >
+            <ChevronsDown className="h-4 w-4 mr-2" />
+            Expand All
+          </Button>
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={handleValidateAndPreview}
           >
             <Eye className="h-4 w-4 mr-2" />
             Preview Form
@@ -292,9 +570,12 @@ export default function FlowEditorClient({
             <HelpCircle className="h-4 w-4 mr-2" />
             Help
           </Button>
-          <Button onClick={handleSave} disabled={isSaving}>
+          <Button 
+            onClick={handleValidateAndSave} 
+            disabled={isSaving || !hasUnsavedChanges}
+          >
             <Save className="h-4 w-4 mr-2" />
-            {isSaving ? 'Saving...' : 'Save Changes'}
+            {isSaving ? 'Saving...' : 'Validate & Save'}
           </Button>
         </div>
       </div>
@@ -320,6 +601,8 @@ export default function FlowEditorClient({
             nodeTypes={nodeTypes}
             fitView
             className="bg-background"
+            minZoom={0.1}
+            maxZoom={2}
           >
             <Background />
             <Controls />
@@ -349,6 +632,30 @@ export default function FlowEditorClient({
           flowMarkdown={flowMarkdown}
           flowId={flowId}
           flowName={flowName}
+          userRole={userRole || 'client'}
+        />
+
+        {/* Validation Dialog */}
+        <ValidationDialog
+          open={showValidationDialog}
+          onOpenChange={setShowValidationDialog}
+          errors={validateFlow()}
+          onConfirmSave={handleActualSave}
+          onConfirmPreview={() => {
+            setShowValidationDialog(false);
+            setShowPreview(true);
+          }}
+          onNodeClick={handleNavigateToNode}
+          isSaving={isSaving}
+          mode={validationContext}
+        />
+
+        {/* Unsaved Changes Dialog */}
+        <UnsavedChangesDialog
+          open={showUnsavedChangesDialog}
+          onOpenChange={setShowUnsavedChangesDialog}
+          onConfirm={handleConfirmNavigation}
+          onCancel={handleCancelNavigation}
         />
       </div>
     </div>
@@ -357,6 +664,31 @@ export default function FlowEditorClient({
 
 // Helper function to convert visual flow to markdown/JSON hybrid format
 function convertFlowToMarkdown(nodes: Node[], edges: Edge[]): string {
+  // Handle empty flow case
+  if (nodes.length === 0) {
+    return `# New Flow
+
+## Getting Started
+
+Add components from the sidebar to build your flow:
+1. Start with a **Start** node
+2. Add question nodes (**Yes/No**, **Multiple Choice**, **Text Input**, etc.)
+3. Connect nodes by dragging from output handles to input handles
+4. Finish with an **End** or **Success** node
+
+Once you add nodes, you'll be able to preview your flow here.
+
+\`\`\`json
+{
+  "name": "New Flow",
+  "description": "Add nodes to start building your flow",
+  "nodes": [],
+  "connections": []
+}
+\`\`\`
+`;
+  }
+
   // Build flow nodes from visual nodes
   const flowNodes = nodes.map(node => {
     const data = node.data as FormNodeData;

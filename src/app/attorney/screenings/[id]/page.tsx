@@ -1,6 +1,6 @@
 import { requireRole } from "@/lib/role-middleware";
 import { db } from "@/lib/db";
-import { screenings, users, attorneyClientMessages, screeningDocuments, quoteRequests } from "@/lib/db/schema";
+import { screenings, users, attorneyClientMessages, screeningDocuments, quoteRequests, screeningViews, organizations, attorneyProfiles } from "@/lib/db/schema";
 import { eq, and, or, desc } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { notFound, redirect } from "next/navigation";
@@ -18,6 +18,7 @@ export default async function AttorneyScreeningDetailPage({
   await requireRole(['attorney', 'org_admin', 'staff', 'super_admin']);
   const session = await auth();
   const attorneyId = session?.user?.id;
+  const userRole = session?.user?.role;
 
   const { id } = await params;
 
@@ -35,6 +36,8 @@ export default async function AttorneyScreeningDetailPage({
       clientName: users.name,
       clientEmail: users.email,
       assignedAttorneyId: screenings.assignedAttorneyId,
+      reviewedForAttorneyId: screenings.reviewedForAttorneyId,
+      organizationId: screenings.organizationId,
     })
     .from(screenings)
     .leftJoin(users, eq(users.id, screenings.userId))
@@ -46,9 +49,63 @@ export default async function AttorneyScreeningDetailPage({
     notFound();
   }
 
-  // Verify attorney is assigned to this screening (unless admin)
-  if (session?.user?.role !== 'org_admin' && session?.user?.role !== 'super_admin' && screening.assignedAttorneyId !== attorneyId) {
-    redirect('/attorney');
+  // Check if user has an attorney profile
+  const [attorneyProfile] = await db
+    .select()
+    .from(attorneyProfiles)
+    .where(eq(attorneyProfiles.userId, attorneyId!))
+    .limit(1);
+
+  // Get organization settings
+  let requireStaffPreScreening = false;
+  if (session?.user?.organizationId) {
+    const [org] = await db
+      .select()
+      .from(organizations)
+      .where(eq(organizations.id, session.user.organizationId))
+      .limit(1);
+    
+    requireStaffPreScreening = org?.requireStaffPreScreening || false;
+  }
+
+  // Determine if this is pure staff or super admin (full access)
+  const isPureStaff = userRole === 'staff' || (userRole === 'org_admin' && !attorneyProfile);
+  const isSuperAdmin = userRole === 'super_admin';
+  const hasAdminAccess = isPureStaff || isSuperAdmin;
+
+  // Access control logic:
+  // 1. Admins and staff can see all screenings
+  // 2. Attorneys can see screenings if:
+  //    a. They are assigned to it (assignedAttorneyId === attorneyId)
+  //    b. It's reviewed for them in gatekeeper mode (reviewedForAttorneyId === attorneyId)
+  //    c. It's unassigned and in marketplace mode (assignedAttorneyId is NULL and !requireStaffPreScreening)
+  if (!hasAdminAccess) {
+    const isAssignedToMe = screening.assignedAttorneyId === attorneyId;
+    const isReviewedForMe = screening.reviewedForAttorneyId === attorneyId;
+    const isAvailableInMarketplace = !screening.assignedAttorneyId && !requireStaffPreScreening;
+    
+    if (!isAssignedToMe && !isReviewedForMe && !isAvailableInMarketplace) {
+      redirect('/attorney');
+    }
+  }
+
+  // Mark screening as viewed by this attorney
+  const existingView = await db
+    .select()
+    .from(screeningViews)
+    .where(
+      and(
+        eq(screeningViews.screeningId, id),
+        eq(screeningViews.attorneyId, attorneyId!)
+      )
+    )
+    .limit(1);
+
+  if (existingView.length === 0) {
+    await db.insert(screeningViews).values({
+      screeningId: id,
+      attorneyId: attorneyId!,
+    });
   }
 
   // Fetch messages
@@ -105,7 +162,7 @@ export default async function AttorneyScreeningDetailPage({
   }>;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 pb-24 md:pb-6">
+    <div className="min-h-screen bg-linear-to-br from-gray-50 to-gray-100 pb-24 md:pb-6">
       <div className="container mx-auto p-6 md:pt-8 space-y-6">
         {/* Header */}
         <div className="flex items-center gap-4">
@@ -136,7 +193,7 @@ export default async function AttorneyScreeningDetailPage({
             </div>
 
             <div className="flex items-center gap-4 p-4 bg-blue-50 rounded-lg">
-              <div className="h-12 w-12 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center text-white text-lg font-medium">
+              <div className="h-12 w-12 rounded-full bg-linear-to-br from-purple-400 to-purple-600 flex items-center justify-center text-white text-lg font-medium">
                 {screening.clientName?.charAt(0) || screening.clientEmail?.charAt(0).toUpperCase()}
               </div>
               <div>

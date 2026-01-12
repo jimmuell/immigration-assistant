@@ -39,29 +39,29 @@ async function createTestAccounts() {
       console.log("✅ Platform Administration already exists\n");
     }
 
-    // 2. Get or create Test Law Firm org
-    let [testLawFirm] = await db
+    // 2. Get or create Test Organization
+    let [testOrg] = await db
       .select()
       .from(organizations)
-      .where(eq(organizations.name, 'Test Law Firm'))
+      .where(eq(organizations.name, 'Test Organization'))
       .limit(1);
 
-    if (!testLawFirm) {
-      console.log("Creating Test Law Firm organization...");
-      [testLawFirm] = await db
+    if (!testOrg) {
+      console.log("Creating Test Organization...");
+      [testOrg] = await db
         .insert(organizations)
         .values({
-          name: 'Test Law Firm',
-          displayName: 'Test Law Firm',
+          name: 'Test Organization',
+          displayName: 'Test Organization',
           type: 'law_firm',
-          contactEmail: 'info@testlawfirm.com',
-          website: 'https://testlawfirm.com',
-          domainKey: 'testlawfirm.com',
+          contactEmail: 'info@testorg.com',
+          website: 'https://testorg.com',
+          domainKey: 'testorg.com',
         })
         .returning();
-      console.log("✅ Test Law Firm created\n");
+      console.log("✅ Test Organization created\n");
     } else {
-      console.log("✅ Test Law Firm already exists\n");
+      console.log("✅ Test Organization already exists\n");
     }
 
     // 3. Create test accounts
@@ -71,28 +71,28 @@ async function createTestAccounts() {
         password: 'TestClient123!',
         name: 'Test Client',
         role: 'client' as const,
-        organizationId: platformOrg.id,
+        organizationId: testOrg.id, // Changed to Test Organization
       },
       {
         email: 'testattorney@test.com',
         password: 'TestAttorney123!',
-        name: 'Test Attorney',
-        role: 'attorney' as const,
-        organizationId: testLawFirm.id,
+        name: 'Test Attorney (Org Admin)',
+        role: 'org_admin' as const, // Changed from attorney to org_admin
+        organizationId: testOrg.id, // Changed to Test Organization
       },
       {
         email: 'teststaff@test.com',
         password: 'TestStaff123!',
         name: 'Test Staff',
         role: 'staff' as const,
-        organizationId: testLawFirm.id,
+        organizationId: testOrg.id, // Changed to Test Organization
       },
       {
         email: 'testorgadmin@test.com',
         password: 'TestOrgAdmin123!',
         name: 'Test Org Admin',
         role: 'org_admin' as const,
-        organizationId: testLawFirm.id,
+        organizationId: testOrg.id, // Changed to Test Organization
       },
     ];
 
@@ -126,12 +126,14 @@ async function createTestAccounts() {
 
       console.log(`✅ Created ${account.role}: ${account.email}`);
 
-      // If attorney, create attorney profile
-      if (account.role === 'attorney') {
+      // If attorney or org_admin, create attorney profile (org_admins can also act as attorneys)
+      if (account.role === 'attorney' || (account.role === 'org_admin' && account.email === 'testattorney@test.com')) {
         await db.insert(attorneyProfiles).values({
           userId: newUser.id,
           organizationId: account.organizationId,
-          bio: 'Test attorney for automated testing',
+          bio: account.email === 'testattorney@test.com' 
+            ? 'Test attorney with org admin capabilities for testing' 
+            : 'Test attorney for automated testing',
           specialties: ['Immigration Law', 'Visa Applications'],
           yearsOfExperience: 5,
           barNumber: 'TEST12345',

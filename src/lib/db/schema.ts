@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, boolean, uuid, jsonb, integer, real, index } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, boolean, uuid, jsonb, integer, real, index, unique } from 'drizzle-orm/pg-core';
 
 // Organizations table for multi-tenancy
 export const organizations = pgTable('organizations', {
@@ -56,11 +56,12 @@ export const messages = pgTable('messages', {
 
 export const flows = pgTable('flows', {
   id: uuid('id').defaultRandom().primaryKey(),
-  organizationId: uuid('organization_id').references(() => organizations.id, { onDelete: 'cascade' }), // Nullable: null = global flow, set = org-specific (future feature)
+  organizationId: uuid('organization_id').references(() => organizations.id, { onDelete: 'cascade' }), // Nullable: null = global flow (super admin), set = org-specific flow
   name: text('name').notNull(),
   description: text('description'),
   content: text('content').notNull(),
   isActive: boolean('is_active').default(false).notNull(),
+  isDraft: boolean('is_draft').default(true).notNull(), // Draft flows can be edited, published flows are locked unless super admin
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 }, (table) => ({
@@ -146,6 +147,12 @@ export const quoteRequests = pgTable('quote_requests', {
   notes: text('notes'), // Internal attorney notes
   expiresAt: timestamp('expires_at'), // Quote expiration date
   status: text('status', { enum: ['pending', 'accepted', 'declined', 'expired'] }).notNull().default('pending'),
+  acceptedAt: timestamp('accepted_at'), // When quote was accepted
+  declinedAt: timestamp('declined_at'), // When quote was declined
+  rejectionRequestReason: text('rejection_request_reason'), // Client's reason for wanting to undo acceptance
+  rejectionRequestedAt: timestamp('rejection_requested_at'), // When client requested to undo acceptance
+  rejectionApprovedBy: uuid('rejection_approved_by').references(() => users.id, { onDelete: 'set null' }), // Attorney/admin who approved rejection
+  rejectionApprovedAt: timestamp('rejection_approved_at'), // When rejection was approved
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 }, (table) => ({
@@ -199,6 +206,18 @@ export const notificationStates = pgTable('notification_states', {
   uniqueUserNotification: index('notification_states_user_notification_unique').on(table.userId, table.notificationId),
 }));
 
+export const screeningViews = pgTable('screening_views', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  screeningId: uuid('screening_id').notNull().references(() => screenings.id, { onDelete: 'cascade' }),
+  attorneyId: uuid('attorney_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  viewedAt: timestamp('viewed_at').defaultNow().notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+  attorneyIdx: index('screening_views_attorney_idx').on(table.attorneyId),
+  screeningIdx: index('screening_views_screening_idx').on(table.screeningId),
+  uniqueScreeningAttorney: unique('screening_views_screening_attorney_unique').on(table.screeningId, table.attorneyId),
+}));
+
 export type Organization = typeof organizations.$inferSelect;
 export type NewOrganization = typeof organizations.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -227,3 +246,5 @@ export type AttorneyProfile = typeof attorneyProfiles.$inferSelect;
 export type NewAttorneyProfile = typeof attorneyProfiles.$inferInsert;
 export type AttorneyRating = typeof attorneyRatings.$inferSelect;
 export type NewAttorneyRating = typeof attorneyRatings.$inferInsert;
+export type ScreeningView = typeof screeningViews.$inferSelect;
+export type NewScreeningView = typeof screeningViews.$inferInsert;

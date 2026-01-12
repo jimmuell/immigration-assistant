@@ -75,11 +75,17 @@ export async function submitQuote({
 
     const session = await requireRole(['attorney', 'org_admin', 'staff', 'super_admin']);
     const attorneyId = session.user.id;
+    const organizationId = session.user.organizationId;
+
+    if (!organizationId) {
+      return { success: false, error: 'Attorney must belong to an organization' };
+    }
 
     // Create quote
     await db.insert(quoteRequests).values({
       screeningId,
       attorneyId,
+      organizationId,
       amount,
       description,
       notes,
@@ -99,6 +105,8 @@ export async function submitQuote({
     revalidatePath(`/attorney/screenings/${screeningId}`);
     revalidatePath(`/completed/${screeningId}`);
     revalidatePath('/attorney');
+    revalidatePath('/attorney/quotes');
+    revalidatePath('/my-quotes');
 
     return { success: true };
   } catch (error) {

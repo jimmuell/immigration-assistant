@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Bookmark, CheckCircle, LogOut, ChevronLeft, ChevronRight, Users, Shield, UserCog, GitBranch, ClipboardList, FileText, DollarSign, CheckSquare, Briefcase, Building2, Crown, FlaskConical, Send, Settings, EyeOff, Eye } from "lucide-react";
+import { Home, Bookmark, CheckCircle, LogOut, ChevronLeft, ChevronRight, Users, Shield, UserCog, GitBranch, ClipboardList, FileText, DollarSign, CheckSquare, Briefcase, Building2, Crown, FlaskConical, Send, Settings, EyeOff, Eye, AlertTriangle, XCircle } from "lucide-react";
 import { signOut, useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { useState, useEffect } from "react";
 
 export function DesktopSidebar() {
@@ -13,24 +14,108 @@ export function DesktopSidebar() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [showAdminMenu, setShowAdminMenu] = useState(false); // Default to hidden
   const [isMounted, setIsMounted] = useState(false);
+  const [unviewedCount, setUnviewedCount] = useState(0);
+  const [isViewingOrg, setIsViewingOrg] = useState(false);
 
   // Load collapsed and admin menu visibility state from localStorage
   useEffect(() => {
-    setIsMounted(true);
-    if (typeof window !== 'undefined') {
-      const savedCollapsed = localStorage.getItem("sidebarCollapsed");
-      if (savedCollapsed !== null) {
-        setIsCollapsed(savedCollapsed === "true");
+    // Using setTimeout to avoid direct setState in effect
+    const timer = setTimeout(() => {
+      setIsMounted(true);
+      if (typeof window !== 'undefined') {
+        const savedCollapsed = localStorage.getItem("sidebarCollapsed");
+        if (savedCollapsed !== null) {
+          setIsCollapsed(savedCollapsed === "true");
+        }
+        const savedAdminMenu = localStorage.getItem("showAdminMenu");
+        if (savedAdminMenu !== null) {
+          setShowAdminMenu(savedAdminMenu === "true");
+        } else {
+          // Default to hidden if no saved preference
+          setShowAdminMenu(false);
+        }
       }
-      const savedAdminMenu = localStorage.getItem("showAdminMenu");
-      if (savedAdminMenu !== null) {
-        setShowAdminMenu(savedAdminMenu === "true");
-      } else {
-        // Default to hidden if no saved preference
-        setShowAdminMenu(false);
-      }
-    }
+    }, 0);
+    return () => clearTimeout(timer);
   }, []);
+
+  // Check if super admin is viewing an organization
+  useEffect(() => {
+    const checkViewingOrg = async () => {
+      if (session?.user?.role === 'super_admin') {
+        try {
+          const response = await fetch('/api/super-admin/check-viewing-org');
+          if (response.ok) {
+            const data = await response.json();
+            setIsViewingOrg(data.isViewingOrg || false);
+          }
+        } catch (error) {
+          console.error('Error checking viewing org:', error);
+          setIsViewingOrg(false);
+        }
+      } else {
+        setIsViewingOrg(false);
+      }
+    };
+
+    if (isMounted && session) {
+      checkViewingOrg();
+    }
+  }, [isMounted, session, pathname]);
+
+  // Fetch unviewed screenings count
+  useEffect(() => {
+    const fetchUnviewedCount = async () => {
+      if (!session?.user?.role || !['attorney', 'org_admin', 'staff', 'super_admin'].includes(session.user.role)) {
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/attorney/unviewed-screenings-count', {
+          method: 'GET',
+          credentials: 'include',
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setUnviewedCount(data.count || 0);
+        }
+      } catch (error) {
+        console.error('Error fetching unviewed count:', error);
+      }
+    };
+
+    if (isMounted && session) {
+      fetchUnviewedCount();
+      
+      // Refresh count every 30 seconds
+      const interval = setInterval(fetchUnviewedCount, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [isMounted, session]);
+
+  // Refresh count when navigating away from new-screenings page
+  useEffect(() => {
+    if (pathname === '/attorney/new-screenings' || pathname.startsWith('/attorney/screenings/')) {
+      // Refresh count after viewing
+      const timer = setTimeout(async () => {
+        if (session?.user?.role && ['attorney', 'org_admin', 'staff', 'super_admin'].includes(session.user.role)) {
+          try {
+            const response = await fetch('/api/attorney/unviewed-screenings-count', {
+              method: 'GET',
+              credentials: 'include',
+            });
+            if (response.ok) {
+              const data = await response.json();
+              setUnviewedCount(data.count || 0);
+            }
+          } catch (error) {
+            console.error('Error refreshing count:', error);
+          }
+        }
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [pathname, session]);
 
   // Don't render on auth pages or before mounting
   if (!isMounted || pathname === "/login" || pathname === "/signup") {
@@ -81,6 +166,12 @@ export function DesktopSidebar() {
       roles: ['client'],
     },
     {
+      name: "My Quotes",
+      href: "/my-quotes",
+      icon: DollarSign,
+      roles: ['client'],
+    },
+    {
       name: "Attorney Dashboard",
       href: "/attorney",
       icon: Briefcase,
@@ -93,15 +184,9 @@ export function DesktopSidebar() {
       roles: ['attorney', 'org_admin'],
     },
     {
-      name: "Pending Quotes",
-      href: "/attorney/pending-quotes",
+      name: "My Quotes",
+      href: "/attorney/quotes",
       icon: DollarSign,
-      roles: ['attorney', 'org_admin'],
-    },
-    {
-      name: "Accepted Quotes",
-      href: "/attorney/accepted-quotes",
-      icon: CheckSquare,
       roles: ['attorney', 'org_admin'],
     },
     {
@@ -135,15 +220,15 @@ export function DesktopSidebar() {
       roles: ['org_admin', 'staff', 'super_admin'],
     },
     {
-      name: "Settings",
-      href: "/admin/settings",
-      icon: Settings,
-      roles: ['org_admin', 'staff', 'super_admin'],
-    },
-    {
       name: "Test Screenings",
       href: "/test-screenings",
       icon: FlaskConical,
+      roles: ['org_admin', 'staff', 'super_admin'],
+    },
+    {
+      name: "Settings",
+      href: "/admin/settings",
+      icon: Settings,
       roles: ['org_admin', 'staff', 'super_admin'],
     },
     {
@@ -173,6 +258,11 @@ export function DesktopSidebar() {
     // First check if item is available for this role
     const hasRole = item.roles.includes(userRole as 'client' | 'attorney' | 'org_admin' | 'staff' | 'super_admin');
     if (!hasRole) return false;
+    
+    // If super admin is not viewing an organization, hide admin menu items
+    if (userRole === 'super_admin' && !isViewingOrg && adminMenuItems.includes(item.href)) {
+      return false;
+    }
     
     // If user can toggle admin menu and it's hidden, filter out admin items
     if (canToggleAdminMenu && !showAdminMenu && adminMenuItems.includes(item.href)) {
@@ -217,6 +307,7 @@ export function DesktopSidebar() {
         {filteredNavItems.map((item) => {
           const Icon = item.icon;
           const isActive = pathname === item.href;
+          const showBadge = item.href === '/attorney/new-screenings' && unviewedCount > 0;
 
           return (
             <Link
@@ -230,7 +321,24 @@ export function DesktopSidebar() {
               title={isCollapsed ? item.name : undefined}
             >
               <Icon className={`h-5 w-5 ${isActive ? "text-blue-600" : ""} ${isCollapsed ? "mx-0" : ""}`} />
-              {!isCollapsed && item.name}
+              {!isCollapsed && (
+                <>
+                  <span className="flex-1">{item.name}</span>
+                  {showBadge && (
+                    <Badge 
+                      variant="destructive" 
+                      className="ml-auto bg-red-500 hover:bg-red-600 text-white text-xs px-2 py-0.5 min-w-6 justify-center"
+                    >
+                      {unviewedCount}
+                    </Badge>
+                  )}
+                </>
+              )}
+              {isCollapsed && showBadge && (
+                <div className="absolute top-1 right-1 bg-red-500 text-white text-[10px] font-bold rounded-full h-4 w-4 flex items-center justify-center">
+                  {unviewedCount > 9 ? '9+' : unviewedCount}
+                </div>
+              )}
             </Link>
           );
         })}

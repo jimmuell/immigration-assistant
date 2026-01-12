@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 import { screenings, users, attorneyClientMessages, screeningDocuments, quoteRequests } from "@/lib/db/schema";
 import { eq, and, or, desc } from "drizzle-orm";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import ScreeningDetailClient from "./screening-detail-client";
 
@@ -26,6 +26,7 @@ export default async function ScreeningDetailPage({ params }: ScreeningDetailPag
       submissionId: screenings.submissionId,
       responses: screenings.responses,
       status: screenings.status,
+      isTestMode: screenings.isTestMode,
       isLocked: screenings.isLocked,
       submittedForReviewAt: screenings.submittedForReviewAt,
       createdAt: screenings.createdAt,
@@ -47,6 +48,11 @@ export default async function ScreeningDetailPage({ params }: ScreeningDetailPag
 
   if (!screening) {
     notFound();
+  }
+
+  // Redirect test screenings to the test details page
+  if (screening.isTestMode) {
+    redirect(`/test-screenings/${id}`);
   }
 
   // Fetch messages (can exist even if quote not accepted yet)

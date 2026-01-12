@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Bookmark, CheckCircle, Users, Shield, FileText, DollarSign, CheckSquare, Briefcase, Send } from "lucide-react";
+import { Home, Bookmark, CheckCircle, Users, Shield, FileText, DollarSign, Briefcase, Send } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useState, useEffect } from "react";
 
@@ -12,7 +12,11 @@ export function MobileTabBar() {
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
-    setIsMounted(true);
+    // Using setTimeout to avoid direct setState in effect
+    const timer = setTimeout(() => {
+      setIsMounted(true);
+    }, 0);
+    return () => clearTimeout(timer);
   }, []);
 
   // Don't render on auth pages or before mounting
@@ -46,6 +50,12 @@ export function MobileTabBar() {
       roles: ['client'],
     },
     {
+      name: "Quotes",
+      href: "/my-quotes",
+      icon: DollarSign,
+      roles: ['client'],
+    },
+    {
       name: "Dashboard",
       href: "/attorney",
       icon: Users,
@@ -59,7 +69,7 @@ export function MobileTabBar() {
     },
     {
       name: "Quotes",
-      href: "/attorney/pending-quotes",
+      href: "/attorney/quotes",
       icon: DollarSign,
       roles: ['attorney'],
     },

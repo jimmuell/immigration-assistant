@@ -93,7 +93,7 @@ export function ReleasedScreeningsClient({ screenings }: ReleasedScreeningsClien
                 </div>
               )}
             </div>
-            <Link href={`/completed/${screening.id}`}>
+            <Link href={`/released/${screening.id}`}>
               <Button variant="outline" size="sm">
                 <span>View Details</span>
                 <ArrowRight className="ml-1 h-4 w-4" />

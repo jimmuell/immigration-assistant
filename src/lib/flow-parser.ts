@@ -9,7 +9,7 @@
 // JSON Format Interfaces
 export interface FlowNode {
   id: string;
-  type: 'start' | 'yes-no' | 'text' | 'form' | 'end' | 'multiple-choice' | 'date';
+  type: 'start' | 'yes-no' | 'text' | 'form' | 'end' | 'success' | 'multiple-choice' | 'date' | 'info' | 'subflow';
   question: string;
   options?: Array<{
     id: string | number;
@@ -209,8 +209,8 @@ function parseFlowFromJSON(flowJSON: FlowJSON): ParsedFlow {
           });
         }
       });
-    } else if (node.type === 'start' || node.type === 'text' || node.type === 'form') {
-      // For start, text, and form nodes, use 'any' connection
+    } else if (node.type === 'start' || node.type === 'text' || node.type === 'form' || node.type === 'date' || node.type === 'info' || node.type === 'subflow') {
+      // For start, text, form, date, info, and subflow nodes, use 'any' connection
       const anyConn = connections.find(c => c.condition === 'any');
       if (anyConn) {
         options.push({
@@ -220,16 +220,18 @@ function parseFlowFromJSON(flowJSON: FlowJSON): ParsedFlow {
         });
       }
     }
-    // End nodes have no options
+    // End and success nodes have no options (terminal nodes)
     
     // Determine the display question based on node type
     let displayQuestion = node.question;
     if (node.type === 'form' && node.formTitle) {
       displayQuestion = node.formTitle;
-    } else if (node.type === 'end' && node.thankYouTitle) {
+    } else if ((node.type === 'end' || node.type === 'success') && node.thankYouTitle) {
       displayQuestion = node.thankYouTitle;
     } else if (node.type === 'start') {
       displayQuestion = 'Start';
+    } else if (node.type === 'info' && node.infoMessage) {
+      displayQuestion = node.infoMessage;
     }
     
     const step: FlowStep = {
@@ -389,9 +391,10 @@ export function validateFlow(flow: ParsedFlow): { valid: boolean; errors: string
       errors.push(`Step "${step.id}" is missing question text`);
     }
 
-    // Check navigation options (end nodes and text nodes can be terminal)
-    // Text nodes without options are treated as informational terminal screens
-    if (step.type !== 'end' && step.type !== 'text' && step.options.length === 0) {
+    // Check navigation options (terminal nodes don't need options)
+    // Terminal nodes: end, success, info, text, and date can be used as final screens
+    const terminalNodeTypes = ['end', 'success', 'info', 'text', 'date'];
+    if (!terminalNodeTypes.includes(step.type) && step.options.length === 0) {
       errors.push(`Step "${step.id}" has no navigation options`);
     }
 

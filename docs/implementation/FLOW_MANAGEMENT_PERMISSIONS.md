@@ -2,34 +2,38 @@
 
 ## Overview
 
-Flow management operations are **restricted to Super Admins only**. This ensures platform-level consistency, quality control, and centralized governance of screening flows across all organizations.
+Flow management enables both **Super Admins** and **Organization Admins** to create and manage screening flows. Super Admins manage global flows available to all organizations, while Organization Admins manage flows specific to their organization.
 
 ## Current Access Policy
 
 ### Super Admin (`super_admin`)
-**Full Access** - Can perform all flow operations:
-- ✅ Create new flows
+**Full Access** - Can perform all flow operations globally:
+- ✅ Create new global flows (available to all organizations)
 - ✅ View all flows (across all organizations)
-- ✅ Edit existing flows
-- ✅ Delete flows
+- ✅ Edit any flow (global or organization-specific)
+- ✅ Delete any flow
 - ✅ Preview flows
-- ✅ Activate/deactivate flows
+- ✅ Change flow status (Draft/Inactive/Active)
 - ✅ Manage flow permissions
 
 ### Organization Admin (`org_admin`)
-**No Access** - Cannot manage flows directly:
-- ❌ Cannot create flows
-- ❌ Cannot edit flows
-- ❌ Cannot delete flows
-- ❌ Cannot activate/deactivate flows
-- ⚠️ Can view flows assigned to their organization (read-only)
-- ⚠️ Can preview flows to test user experience
+**Organization-Scoped Access** - Can manage flows for their organization:
+- ✅ Create new flows specific to their organization
+- ✅ View global flows and their organization's flows
+- ✅ Edit their organization's flows
+- ✅ Delete their organization's flows
+- ✅ Preview flows
+- ✅ Change flow status through Draft → Inactive → Active progression
+- ✅ Test flows using Test Mode
+- ❌ Cannot edit or delete global flows created by Super Admins
+- ❌ Cannot view or access flows from other organizations
 
-**What Organization Admins Should Do:**
-- Contact Super Admin for flow creation requests
-- Contact Support (support@example.com) for flow modifications
-- Use existing flows assigned to their organization
-- Preview flows to understand the screening process
+**What Organization Admins Can Do:**
+- Create custom flows tailored to their organization's needs
+- Test flows using the built-in Test Mode before activation
+- Publish flows when ready for production use
+- Manage their organization's screening workflows independently
+- View and use global flows created by Super Admins
 
 ### Staff (`staff`)
 **No Access** - Cannot manage flows:
@@ -46,137 +50,253 @@ Flow management operations are **restricted to Super Admins only**. This ensures
 - Only interact with flows through the screening process
 - Experience flows as end-users during client intake
 
+## Flow Types
+
+### Global Flows
+- Created by Super Admins
+- Available to all organizations
+- Cannot be edited or deleted by Organization Admins
+- Marked with a globe icon (🌐) in the UI
+- Ensure platform-wide consistency and best practices
+
+### Organization Flows
+- Created by Organization Admins
+- Specific to a single organization
+- Fully manageable by the organization's admins
+- Allow customization for specific organizational needs
+- Isolated from other organizations
+
+## Flow Status System
+
+The system uses a **simplified 3-state model** that prevents confusion and invalid states:
+
+### Draft
+- New flows start as drafts (`isDraft: true, isActive: false`)
+- Can be freely edited and modified
+- Ideal for testing and iteration
+- Use Test Mode to thoroughly test before publishing
+- Not available to clients
+
+### Inactive
+- Published but not yet live (`isDraft: false, isActive: false`)
+- Cannot be edited without returning to draft
+- Good for preparing flows in advance
+- Not available to clients
+
+### Active
+- Published and live (`isDraft: false, isActive: true`)
+- Cannot be edited without returning to draft
+- Available to clients for screenings
+- Monitor for issues and feedback
+
+### State Progression
+```
+Draft → Inactive → Active
+  ↑                   ↓
+  └─ Return to Draft ←┘
+```
+
 ## Rationale
 
-### Why Super Admin Only?
+### Why Organization Admin Access?
 
-1. **Platform Consistency**: Ensures all flows meet quality standards and follow best practices
-2. **Governance**: Centralized control over screening logic and data collection
-3. **Quality Assurance**: Prevents creation of broken or incomplete flows
-4. **Legal Compliance**: Ensures flows include appropriate disclaimers and collect required information
-5. **User Experience**: Maintains consistent UX across all organizations
-6. **Technical Support**: Easier to troubleshoot and maintain flows with centralized management
+1. **Organizational Autonomy**: Each organization can create flows tailored to their specific needs
+2. **Faster Iteration**: Organizations can create and test flows without waiting for Super Admin
+3. **Customization**: Different law firms may have different screening requirements
+4. **Scalability**: Reduces bottleneck of having Super Admin manage all flows
+5. **Testing Infrastructure**: Built-in Test Mode allows thorough testing before activation
+6. **Quality Control**: Draft/publish system ensures flows are ready before use
 
 ## User Experience
 
 ### For Organization Admins
 
-When attempting to access flow management features, organization admins will see:
+Organization admins now have full flow management capabilities:
 
-```
-⚠️ Flow Management Restricted
+**Access Points:**
+- `/admin/flows` - Main flow management interface
+- `/admin/flows-editor` - Visual node-based flow editor
+- `/test-screenings` - View and manage test screenings
 
-Flow creation, editing, and management are restricted to Super Administrators to ensure platform consistency and quality.
+**Workflow:**
+1. **Create** a new flow (starts as draft)
+2. **Design** using visual editor or markdown content
+3. **Test** using Test Mode checkbox when previewing
+4. **Iterate** based on test results
+5. **Publish** when ready for production
+6. **Activate** to make available for client screenings
 
-Need to create or modify a flow?
-• Contact your Super Admin
-• Email support@immigration-assistant.com
-• Describe your screening requirements
-
-You can still:
-✓ View flows assigned to your organization
-✓ Preview flows to test user experience
-✓ Use existing flows for client screenings
-```
+**UI Features:**
+- Clear indication of Global vs Organization flows
+- Draft/Published status badges
+- Quick toggle between Active/Inactive
+- Publish/Unpublish buttons for draft management
+- Cannot edit global flows (view/preview only)
 
 ### For Staff Members
 
-Staff members will see:
+Staff members have read-only access:
 
-```
-⚠️ Flow Management Access
+**Access:**
+- ✓ View flows (global and organization-specific)
+- ✓ Preview flows to understand screening process
+- ✓ View test screenings
+- ❌ Cannot create, edit, or delete flows
 
-You do not have permission to manage flows.
-
-For flow-related questions:
-1. Contact your Organization Admin
-2. Your admin will coordinate with the Super Admin or Support team
-
-You can still:
-✓ View flows (read-only)
-✓ Preview flows
-```
+**Note:** Staff should contact their Organization Admin for flow-related needs.
 
 ## Implementation Details
 
 ### Permission Checks
 
-All flow management actions include role verification:
+All flow management actions include role verification and ownership checks:
 
 ```typescript
 // Server-side permission check
-if (!session || session.user.role !== 'super_admin') {
-  throw new Error('Unauthorized: Flow management requires Super Admin role');
+if (!session || !['org_admin', 'super_admin'].includes(session.user.role)) {
+  throw new Error('Unauthorized: Flow management requires Organization Admin or Super Admin role');
+}
+
+// Ownership check for org admins
+if (session.user.role === 'org_admin') {
+  if (flow.organizationId !== session.user.organizationId) {
+    throw new Error('Unauthorized: You can only manage flows belonging to your organization');
+  }
+}
+```
+
+### Database Schema
+
+```typescript
+flows {
+  id: uuid
+  organizationId: uuid | null  // null = global flow, set = org-specific
+  name: text
+  description: text
+  content: text
+  isActive: boolean            // Whether flow is active for screenings
+  isDraft: boolean             // Draft vs Published status
+  createdAt: timestamp
+  updatedAt: timestamp
 }
 ```
 
 ### UI Components
 
-- Flow management buttons (Create, Edit, Delete) are hidden for non-super-admins
-- Informational messages guide users to appropriate support channels
-- Read-only viewing and preview remain available for org_admin and staff
+- Flow management buttons (Create, Edit, Delete) shown for org_admin and super_admin
+- Organization-scoped filtering ensures users only see relevant flows
+- Global flows marked with globe icon and read-only for org admins
+- Draft/Published status clearly indicated with badges
+- Publish/Unpublish actions available for flow owners
 
-### API Endpoints
+### Server Actions
 
-All flow management endpoints enforce super admin role:
+All flow management actions enforce permissions and ownership:
 
-- `POST /api/flows` - Create flow (super_admin only)
-- `PUT /api/flows/:id` - Update flow (super_admin only)
-- `DELETE /api/flows/:id` - Delete flow (super_admin only)
-- `PATCH /api/flows/:id/toggle` - Toggle active status (super_admin only)
-- `GET /api/flows` - List flows (all authenticated users, filtered by org)
-- `GET /api/flows/:id` - View flow (all authenticated users with access)
-- `GET /api/flows/:id/preview` - Preview flow (org_admin, staff, super_admin)
+- `createFlow` - Create flow (org_admin creates org flows, super_admin creates global flows)
+- `updateFlow` - Update flow (org_admin can update own org's flows)
+- `deleteFlow` - Delete flow (org_admin can delete own org's flows)
+- `toggleFlowActive` - Toggle active status (org_admin for own flows)
+- `publishFlow` - Publish draft flow (org_admin for own flows)
+- `unpublishFlow` - Unpublish to draft (org_admin for own flows)
+- `getFlows` - List flows (filtered by organization)
+- `getFlowById` - View flow (with ownership check)
+
+## Testing Flows
+
+Organization Admins can thoroughly test flows before activating them:
+
+### Test Mode
+
+**Accessing Test Mode:**
+1. Navigate to a flow preview
+2. Check the "Test Mode" box at the start screen
+3. Complete the flow as you would normally
+4. Test submission creates a screening flagged as `isTestMode: true`
+
+**Test Screenings Page:**
+- View all test screenings at `/test-screenings`
+- Accessible to org_admin, staff, and super_admin
+- Test screenings kept separate from real client data
+- Easy deletion of test data after testing complete
+
+**Best Practices:**
+1. Create flow in draft status
+2. Test multiple scenarios using Test Mode
+3. Verify all paths and conditional logic
+4. Check data collection and validation
+5. Publish flow when testing is complete
+6. Activate flow for production use
+7. Delete test screenings to keep system clean
 
 ## Future Considerations
 
-This permission model may evolve based on platform needs:
+### Potential Enhancements
 
-### Potential Future Changes
+1. **Flow Templates**: Pre-built flow templates for common immigration scenarios
+2. **Flow Versioning**: Track flow changes and allow rollback to previous versions
+3. **Collaboration**: Multiple admins working on the same flow with change tracking
+4. **Analytics**: Usage statistics and completion rates for flows
+5. **A/B Testing**: Test different flow variations to optimize conversion
 
-1. **Delegated Flow Creation**: Allow org admins to create flows with super admin approval
-2. **Flow Templates**: Provide pre-approved templates that org admins can customize
-3. **Sandboxed Editing**: Allow org admins to create draft flows for super admin review
-4. **Organization-Specific Flows**: Enable org admins to manage flows exclusive to their organization
+### Quality Assurance
 
-### Decision Criteria
-
-Any changes to flow permissions will consider:
-- Platform maturity and stability
-- Organization feedback and requirements
-- Support team capacity
-- Quality control mechanisms
-- Technical capabilities for approval workflows
+Current safeguards:
+- Draft/publish system prevents accidental activation of incomplete flows
+- Test Mode allows thorough testing without affecting real data
+- Organization isolation prevents cross-contamination
+- Ownership checks ensure only authorized users can modify flows
 
 ## Contact & Support
 
 ### For Super Admins
-Access flow management at: `/admin/flows` and `/admin/flows-editor`
+- Access flow management at: `/admin/flows` and `/admin/flows-editor`
+- Manage global flows available to all organizations
+- Monitor and audit organization-specific flows if needed
+- Support organizations with flow-related questions
 
 ### For Organization Admins
-- **Email**: support@immigration-assistant.com
-- **Subject**: Flow Management Request - [Organization Name]
-- **Include**: 
-  - Type of request (new flow, modification, deletion)
-  - Screening requirements and use case
-  - Timeline/urgency
-  - Any specific questions or data points needed
+- **Self-Service Access**: `/admin/flows` and `/admin/flows-editor`
+- **Full Capabilities**: Create, edit, test, and activate flows independently
+- **Testing**: Use Test Mode to validate flows before activation
+- **Support Contact**: support@immigration-assistant.com for technical issues
+
+**Recommended Workflow:**
+1. Create new flow in draft status
+2. Design flow using visual editor
+3. Test thoroughly using Test Mode
+4. Publish flow when ready
+5. Activate for production use
+6. Monitor usage and iterate as needed
 
 ### For Staff Members
-Contact your Organization Admin, who will coordinate with Super Admin/Support as needed.
+Contact your Organization Admin for flow-related needs. Your admin can create and manage flows for your organization.
 
 ---
 
 ## Related Documentation
 
-- [Super Admin Implementation](../src/docs/SUPER_ADMIN_IMPLEMENTATION.md)
-- [Role-Based Authentication](../src/docs/ROLE_AUTH.md)
-- [Flow JSON Specification](../src/docs/FLOW_JSON_SPECIFICATION.md)
-- [Flow Parser & UI Mapping](../src/docs/FLOW_PARSER_UI_MAPPING.md)
+- [Test Screenings](../testing/TEST_SCREENINGS.md)
+- [Flow JSON Specification](../FLOW_JSON_SPECIFICATION.md)
+- [Flow Parser & UI Mapping](../FLOW_PARSER_UI_MAPPING.md)
+- [Visual Flow Editor Guide](../VISUAL_FLOW_EDITOR.md)
 
 ---
 
-**Last Updated**: January 5, 2025  
-**Policy Version**: 1.0  
-**Status**: ✅ Active
+## Migration Notes
+
+### Database Changes
+- Added `isDraft` field to flows table (default: true)
+- Existing flows set to `isDraft: false` (already in use)
+- Migration file: `migrations/add_is_draft_to_flows.sql`
+
+### Breaking Changes
+None. This is a backward-compatible enhancement. Existing flows continue to work as before.
+
+---
+
+**Last Updated**: January 12, 2026  
+**Policy Version**: 2.0  
+**Status**: ✅ Active  
+**Changes**: Added organization admin flow management capabilities with draft/publish system
 

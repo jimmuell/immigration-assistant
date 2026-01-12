@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { screenings } from '@/lib/db/schema';
+import { screenings, flows } from '@/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
 
 export async function POST(request: NextRequest) {
@@ -25,6 +25,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Auto-detect if this should be a test screening
+    // Screenings from draft or inactive flows should always be marked as test mode
+    let shouldBeTestMode = isTestMode;
+    if (flowId) {
+      const [flow] = await db
+        .select()
+        .from(flows)
+        .where(eq(flows.id, flowId))
+        .limit(1);
+      
+      if (flow && (flow.isDraft || !flow.isActive)) {
+        shouldBeTestMode = true;
+      }
+    }
+
     // If completing a flow, delete any existing draft for this flow
     if (deleteDraft && flowId && status === 'submitted') {
       await db
@@ -46,7 +61,7 @@ export async function POST(request: NextRequest) {
           responses: JSON.stringify(responses),
           currentStepId: currentStepId || null,
           status,
-          isTestMode,
+          isTestMode: shouldBeTestMode,
           updatedAt: new Date(),
         })
         .where(eq(screenings.id, screeningId))
@@ -70,7 +85,7 @@ export async function POST(request: NextRequest) {
         responses: JSON.stringify(responses),
         currentStepId: currentStepId || null,
         status,
-        isTestMode,
+        isTestMode: shouldBeTestMode,
       })
       .returning();
 

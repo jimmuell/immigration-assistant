@@ -5,10 +5,26 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 
 export default async function FlowsEditorPage() {
-  // Only super admins can access the flow editor
-  await requireRole(['super_admin']);
+  // Super admins and org admins can access the flow editor
+  const session = await requireRole(['super_admin', 'org_admin']);
 
-  const allFlows = await db.select().from(flows);
+  // Get flows based on role
+  let allFlows;
+  if (session.user.role === 'super_admin') {
+    allFlows = await db.select().from(flows);
+  } else {
+    // Org admins see global flows or their org's flows
+    const { or, isNull, eq } = await import('drizzle-orm');
+    allFlows = await db
+      .select()
+      .from(flows)
+      .where(
+        or(
+          isNull(flows.organizationId),
+          eq(flows.organizationId, session.user.organizationId!)
+        )
+      );
+  }
 
   return (
     <div className="container mx-auto py-8 px-4">

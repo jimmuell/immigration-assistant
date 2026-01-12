@@ -8,8 +8,8 @@ export default async function FlowEditorDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  // Only super admins can access the flow editor
-  await requireRole(['super_admin']);
+  // Super admins and org admins can access the flow editor
+  const session = await requireRole(['super_admin', 'org_admin']);
 
   const { id } = await params;
   const result = await getFlow(id);
@@ -18,12 +18,25 @@ export default async function FlowEditorDetailPage({
     notFound();
   }
 
+  // Org admins can only edit their organization's flows (not global flows)
+  if (session.user.role === 'org_admin') {
+    if (result.flow.organizationId === null) {
+      // This is a global flow, org admins can't edit it
+      notFound();
+    }
+    if (result.flow.organizationId !== session.user.organizationId) {
+      // This flow belongs to another organization
+      notFound();
+    }
+  }
+
   return (
     <FlowEditorClient
       flowId={id}
       flowName={result.flow.name}
       initialNodes={result.nodes as any}
       initialEdges={result.edges}
+      userRole={session.user.role}
     />
   );
 }

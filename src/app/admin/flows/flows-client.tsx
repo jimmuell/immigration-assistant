@@ -2,9 +2,9 @@
 
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Upload, Edit, Trash2, Workflow, AlertCircle, Eye } from "lucide-react";
+import { Plus, Upload, Edit, Trash2, Workflow, AlertCircle, Eye, CheckCircle, FileEdit, Globe } from "lucide-react";
 import { useState, useRef, useTransition } from "react";
-import { createFlow, updateFlow, deleteFlow, toggleFlowActive } from "./actions";
+import { createFlow, updateFlow, deleteFlow, cycleFlowStatus, unpublishFlow } from "./actions";
 import type { Flow } from "@/lib/db/schema";
 import {
   AlertDialog,
@@ -34,10 +34,11 @@ export default function FlowsClient({ initialFlows, userRole }: FlowsClientProps
   const [flowToDelete, setFlowToDelete] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  // Check if user is super admin
+  // Check user roles
   const isSuperAdmin = userRole === 'super_admin';
   const isOrgAdmin = userRole === 'org_admin';
   const isStaff = userRole === 'staff';
+  const canManageFlows = isSuperAdmin || isOrgAdmin;
 
   const handleImportClick = () => {
     fileInputRef.current?.click();
@@ -150,20 +151,27 @@ export default function FlowsClient({ initialFlows, userRole }: FlowsClientProps
     });
   };
 
-  const handleToggleActive = (flowId: string) => {
+  const handleCycleStatus = (flowId: string, currentState: { isDraft: boolean; isActive: boolean }) => {
     startTransition(async () => {
       try {
-        const updatedFlow = await toggleFlowActive(flowId);
+        const updatedFlow = await cycleFlowStatus(flowId);
         setFlows(flows.map(flow => 
           flow.id === flowId ? updatedFlow : flow
         ));
         
-        toast.success(
-          updatedFlow.isActive ? "Flow activated" : "Flow deactivated",
-          {
-            description: `${updatedFlow.name} is now ${updatedFlow.isActive ? "active" : "inactive"}`,
-          }
-        );
+        // Determine what happened
+        let message = "";
+        if (currentState.isDraft) {
+          message = "Flow published as Inactive";
+        } else if (!currentState.isActive) {
+          message = "Flow activated";
+        } else {
+          message = "Flow deactivated";
+        }
+        
+        toast.success(message, {
+          description: `${updatedFlow.name} is now ${getStatusLabel(updatedFlow)}`,
+        });
       } catch (error) {
         toast.error("Update failed", {
           description: "There was an error updating the flow status",
@@ -172,13 +180,50 @@ export default function FlowsClient({ initialFlows, userRole }: FlowsClientProps
     });
   };
 
+  const handleReturnToDraft = (flowId: string) => {
+    startTransition(async () => {
+      try {
+        const updatedFlow = await unpublishFlow(flowId);
+        setFlows(flows.map(flow => 
+          flow.id === flowId ? updatedFlow : flow
+        ));
+        
+        toast.success("Returned to Draft", {
+          description: "The flow is now in draft mode and can be edited",
+        });
+      } catch (error) {
+        toast.error("Update failed", {
+          description: "There was an error returning the flow to draft",
+        });
+      }
+    });
+  };
+
+  const getStatusLabel = (flow: Flow) => {
+    if (flow.isDraft) return "Draft";
+    if (flow.isActive) return "Active";
+    return "Inactive";
+  };
+
+  const getStatusColor = (flow: Flow) => {
+    if (flow.isDraft) return "bg-orange-100 text-orange-800 border-orange-300";
+    if (flow.isActive) return "bg-green-100 text-green-800 border-green-300";
+    return "bg-gray-100 text-gray-800 border-gray-300";
+  };
+
+  const getNextStatusLabel = (flow: Flow) => {
+    if (flow.isDraft) return "Publish as Inactive";
+    if (flow.isActive) return "Deactivate";
+    return "Activate";
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       <AdminMobileNav />
       <div className="container mx-auto p-6 pb-24 md:pb-6 md:pt-8 space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold">Flows</h1>
-        {isSuperAdmin && (
+        {canManageFlows && (
           <div className="flex gap-2">
             <input
               ref={fileInputRef}
@@ -206,48 +251,47 @@ export default function FlowsClient({ initialFlows, userRole }: FlowsClientProps
         )}
       </div>
       
-      {/* Informational message for non-super-admins */}
-      {(isOrgAdmin || isStaff) && (
+      {/* Informational message for org admins */}
+      {isOrgAdmin && (
         <Alert className="bg-blue-50 border-blue-200">
           <AlertCircle className="h-4 w-4 text-blue-600" />
-          <AlertTitle className="text-blue-900">Flow Management Restricted</AlertTitle>
+          <AlertTitle className="text-blue-900">Organization Flow Management</AlertTitle>
           <AlertDescription className="text-blue-800">
-            {isOrgAdmin && (
-              <>
-                Flow creation, editing, and management are restricted to Super Administrators to ensure platform consistency and quality.
-                <br /><br />
-                <strong>Need to create or modify a flow?</strong>
-                <ul className="list-disc list-inside mt-2 space-y-1">
-                  <li>Contact your Super Admin</li>
-                  <li>Email support@immigration-assistant.com</li>
-                  <li>Describe your screening requirements</li>
-                </ul>
-                <br />
-                <strong>You can still:</strong>
-                <ul className="list-disc list-inside mt-2 space-y-1">
-                  <li>View flows assigned to your organization (you're viewing them now)</li>
-                  <li>Preview flows to test user experience (click "Preview" button below)</li>
-                  <li>Use existing flows for client screenings (via Screenings section)</li>
-                </ul>
-              </>
-            )}
-            {isStaff && (
-              <>
-                You do not have permission to manage flows.
-                <br /><br />
-                <strong>For flow-related questions:</strong>
-                <ol className="list-decimal list-inside mt-2 space-y-1">
-                  <li>Contact your Organization Admin</li>
-                  <li>Your admin will coordinate with the Super Admin or Support team</li>
-                </ol>
-                <br />
-                <strong>You can still:</strong>
-                <ul className="list-disc list-inside mt-2 space-y-1">
-                  <li>View flows (you're viewing them now)</li>
-                  <li>Preview flows (click "Preview" button below)</li>
-                </ul>
-              </>
-            )}
+            You can now create and manage flows for your organization!
+            <br /><br />
+            <strong>Flow Status Workflow:</strong>
+            <ul className="list-disc list-inside mt-2 space-y-1">
+              <li><strong>Draft</strong> - Work in progress, can be edited freely</li>
+              <li><strong>Inactive</strong> - Published but not available to clients yet</li>
+              <li><strong>Active</strong> - Live and available for client screenings</li>
+            </ul>
+            <br />
+            <strong>Best Practice:</strong> Create → Test → Publish as Inactive → Activate when ready
+            <br /><br />
+            <strong>Note:</strong> Global flows (marked with globe icon) are managed by Super Admins and cannot be edited.
+          </AlertDescription>
+        </Alert>
+      )}
+      
+      {/* Informational message for staff */}
+      {isStaff && (
+        <Alert className="bg-blue-50 border-blue-200">
+          <AlertCircle className="h-4 w-4 text-blue-600" />
+          <AlertTitle className="text-blue-900">Flow Management Access</AlertTitle>
+          <AlertDescription className="text-blue-800">
+            You do not have permission to manage flows.
+            <br /><br />
+            <strong>For flow-related questions:</strong>
+            <ol className="list-decimal list-inside mt-2 space-y-1">
+              <li>Contact your Organization Admin</li>
+              <li>Your admin can create and manage flows for your organization</li>
+            </ol>
+            <br />
+            <strong>You can still:</strong>
+            <ul className="list-disc list-inside mt-2 space-y-1">
+              <li>View flows (you're viewing them now)</li>
+              <li>Preview flows (click "Preview" button below)</li>
+            </ul>
           </AlertDescription>
         </Alert>
       )}
@@ -267,45 +311,83 @@ export default function FlowsClient({ initialFlows, userRole }: FlowsClientProps
                 <tr className="border-b">
                   <th className="text-left py-3 px-4">Name</th>
                   <th className="text-left py-3 px-4">Description</th>
+                  <th className="text-left py-3 px-4">Type</th>
                   <th className="text-left py-3 px-4">Status</th>
                   <th className="text-left py-3 px-4">Last Updated</th>
                   <th className="text-left py-3 px-4">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {flows.map((flow) => (
+                {flows.map((flow) => {
+                  const isGlobalFlow = flow.organizationId === null;
+                  const canEdit = isSuperAdmin || (isOrgAdmin && !isGlobalFlow);
+                  
+                  return (
                   <tr key={flow.id} className="border-b hover:bg-muted/50">
-                    <td className="py-3 px-4 font-medium">{flow.name}</td>
+                    <td className="py-3 px-4 font-medium">
+                      <div className="flex items-center gap-2">
+                        {flow.name}
+                        {isGlobalFlow && (
+                          <Globe className="h-4 w-4 text-blue-600" title="Global Flow" />
+                        )}
+                      </div>
+                    </td>
                     <td className="py-3 px-4 text-sm text-muted-foreground">
                       {flow.description || 'No description'}
                     </td>
                     <td className="py-3 px-4">
-                      {isSuperAdmin ? (
-                        <Button
-                          size="sm"
-                          variant={flow.isActive ? "default" : "outline"}
-                          onClick={() => handleToggleActive(flow.id)}
-                          disabled={isPending}
-                          className="min-w-[90px]"
-                        >
-                          {flow.isActive ? "Active" : "Inactive"}
-                        </Button>
-                      ) : (
-                        <span className={`inline-flex items-center px-3 py-1 rounded-md text-sm font-medium ${
-                          flow.isActive 
-                            ? "bg-green-100 text-green-800" 
-                            : "bg-gray-100 text-gray-800"
-                        }`}>
-                          {flow.isActive ? "Active" : "Inactive"}
-                        </span>
-                      )}
+                      <span className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium ${
+                        isGlobalFlow 
+                          ? "bg-blue-100 text-blue-800" 
+                          : "bg-purple-100 text-purple-800"
+                      }`}>
+                        {isGlobalFlow ? "Global" : "Organization"}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4">
+                      <div className="flex flex-col gap-2">
+                        {canEdit ? (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleCycleStatus(flow.id, { isDraft: flow.isDraft, isActive: flow.isActive })}
+                              disabled={isPending}
+                              className={`min-w-[160px] ${getStatusColor(flow)}`}
+                            >
+                              {flow.isDraft && <FileEdit className="h-3 w-3 mr-1" />}
+                              {!flow.isDraft && flow.isActive && <CheckCircle className="h-3 w-3 mr-1" />}
+                              {!flow.isDraft && !flow.isActive && <Eye className="h-3 w-3 mr-1" />}
+                              {getStatusLabel(flow)} → {getNextStatusLabel(flow)}
+                            </Button>
+                            {!flow.isDraft && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => handleReturnToDraft(flow.id)}
+                                disabled={isPending}
+                                className="min-w-[160px] text-xs text-gray-600 hover:text-gray-900"
+                              >
+                                Return to Draft
+                              </Button>
+                            )}
+                          </>
+                        ) : (
+                          <span className={`inline-flex items-center px-3 py-1 rounded-md text-sm font-medium ${getStatusColor(flow)}`}>
+                            {flow.isDraft && <FileEdit className="h-3 w-3 mr-1" />}
+                            {!flow.isDraft && flow.isActive && <CheckCircle className="h-3 w-3 mr-1" />}
+                            {!flow.isDraft && !flow.isActive && <Eye className="h-3 w-3 mr-1" />}
+                            {getStatusLabel(flow)}
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="py-3 px-4 text-sm" suppressHydrationWarning>
                       {new Date(flow.updatedAt).toLocaleDateString()}
                     </td>
                     <td className="py-3 px-4">
                       <div className="flex gap-2">
-                        {isSuperAdmin && (
+                        {canEdit && (
                           <>
                             <Button
                               size="sm"
@@ -337,7 +419,7 @@ export default function FlowsClient({ initialFlows, userRole }: FlowsClientProps
                             </Button>
                           </>
                         )}
-                        {!isSuperAdmin && (
+                        {!canEdit && (
                           <Button
                             size="sm"
                             variant="outline"
@@ -353,7 +435,8 @@ export default function FlowsClient({ initialFlows, userRole }: FlowsClientProps
                       </div>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>

@@ -10,6 +10,7 @@ interface FlowPreviewModalProps {
   flowMarkdown: string;
   flowId: string;
   flowName: string;
+  userRole?: string;
 }
 
 export function FlowPreviewModal({
@@ -18,6 +19,7 @@ export function FlowPreviewModal({
   flowMarkdown,
   flowId,
   flowName,
+  userRole,
 }: FlowPreviewModalProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -25,7 +27,7 @@ export function FlowPreviewModal({
         <DialogHeader>
           <DialogTitle>Interactive Flow Preview</DialogTitle>
           <DialogDescription>
-            Test your flow as users will experience it
+            Test your flow as users will experience it. Screenings from draft or inactive flows are automatically marked as test mode.
           </DialogDescription>
         </DialogHeader>
         <div className="flex-1 overflow-y-auto pr-2">
@@ -33,6 +35,7 @@ export function FlowPreviewModal({
             markdown={flowMarkdown}
             flowId={flowId}
             flowName={flowName}
+            userRole={userRole}
           />
         </div>
       </DialogContent>

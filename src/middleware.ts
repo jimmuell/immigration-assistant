@@ -23,10 +23,11 @@ export async function middleware(req: NextRequest) {
     
     if (userRole === 'super_admin') {
       return NextResponse.redirect(new URL("/super-admin", req.url));
-    } else if (userRole === 'org_admin' || userRole === 'staff') {
-      return NextResponse.redirect(new URL("/admin", req.url));
-    } else if (userRole === 'attorney') {
+    } else if (userRole === 'attorney' || userRole === 'org_admin') {
+      // Redirect attorneys and org_admins to attorney dashboard by default
       return NextResponse.redirect(new URL("/attorney", req.url));
+    } else if (userRole === 'staff') {
+      return NextResponse.redirect(new URL("/admin", req.url));
     } else {
       return NextResponse.redirect(new URL("/client", req.url));
     }
@@ -38,10 +39,11 @@ export async function middleware(req: NextRequest) {
     
     if (userRole === 'super_admin') {
       return NextResponse.redirect(new URL("/super-admin", req.url));
-    } else if (userRole === 'org_admin' || userRole === 'staff') {
-      return NextResponse.redirect(new URL("/admin", req.url));
-    } else if (userRole === 'attorney') {
+    } else if (userRole === 'attorney' || userRole === 'org_admin') {
+      // Redirect attorneys and org_admins to attorney dashboard by default
       return NextResponse.redirect(new URL("/attorney", req.url));
+    } else if (userRole === 'staff') {
+      return NextResponse.redirect(new URL("/admin", req.url));
     } else {
       return NextResponse.redirect(new URL("/client", req.url));
     }
@@ -62,10 +64,11 @@ export async function middleware(req: NextRequest) {
     if (isHomePage) {
       if (userRole === 'super_admin') {
         return NextResponse.redirect(new URL("/super-admin", req.url));
-      } else if (userRole === 'org_admin' || userRole === 'staff') {
-        return NextResponse.redirect(new URL("/admin", req.url));
-      } else if (userRole === 'attorney') {
+      } else if (userRole === 'attorney' || userRole === 'org_admin') {
+        // Redirect attorneys and org_admins to attorney dashboard by default
         return NextResponse.redirect(new URL("/attorney", req.url));
+      } else if (userRole === 'staff') {
+        return NextResponse.redirect(new URL("/admin", req.url));
       } else {
         return NextResponse.redirect(new URL("/client", req.url));
       }

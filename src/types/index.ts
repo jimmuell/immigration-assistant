@@ -74,6 +74,10 @@ export interface FormNodeData extends Record<string, unknown> {
   fieldName?: string;
   required?: boolean;
   formFields?: FormField[];
+  collapsed?: boolean;
+  highlighted?: boolean;
+  yesLabel?: string;
+  noLabel?: string;
 }
 
 export interface FormNode {
