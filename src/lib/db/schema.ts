@@ -28,6 +28,7 @@ export const users = pgTable('users', {
   password: text('password').notNull(),
   image: text('image'),
   role: text('role', { enum: ['client', 'attorney', 'org_admin', 'staff', 'super_admin'] }).notNull().default('client'),
+  anonymizedDisplayName: text('anonymized_display_name'), // Anonymous identifier shown to attorneys before contact unlock (e.g., "Client #A7B3")
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 }, (table) => ({
@@ -141,7 +142,7 @@ export const quoteRequests = pgTable('quote_requests', {
   organizationId: uuid('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
   screeningId: uuid('screening_id').notNull().references(() => screenings.id, { onDelete: 'cascade' }),
   attorneyId: uuid('attorney_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  amount: real('amount').notNull(), // Quote amount in USD
+  amount: real('amount').notNull(), // Quote amount in USD (legacy single-amount field)
   currency: text('currency').default('USD').notNull(),
   description: text('description'), // Services included
   notes: text('notes'), // Internal attorney notes
@@ -153,10 +154,21 @@ export const quoteRequests = pgTable('quote_requests', {
   rejectionRequestedAt: timestamp('rejection_requested_at'), // When client requested to undo acceptance
   rejectionApprovedBy: uuid('rejection_approved_by').references(() => users.id, { onDelete: 'set null' }), // Attorney/admin who approved rejection
   rejectionApprovedAt: timestamp('rejection_approved_at'), // When rejection was approved
+  // Lead protection fields
+  isContactUnlocked: boolean('is_contact_unlocked').default(false).notNull(), // Whether client contact info has been revealed to attorney
+  unlockMethod: text('unlock_method', { enum: ['attorney_lead_fee', 'client_escrow', 'quote_accepted', 'admin_override'] }), // How contact was unlocked
+  unlockRecordId: uuid('unlock_record_id'), // FK to lead_unlock_records (added via migration)
+  // Negotiation tracking
+  negotiationRoundCount: integer('negotiation_round_count').default(0).notNull(), // Number of counteroffer rounds
+  currentCounterofferId: uuid('current_counteroffer_id'), // Active counteroffer (added via migration)
+  // Line items support
+  totalAmount: real('total_amount'), // Computed from line items (denormalized for query performance)
+  hasLineItems: boolean('has_line_items').default(false).notNull(), // Quick check for itemized vs single amount
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 }, (table) => ({
   organizationIdx: index('quote_requests_organization_idx').on(table.organizationId),
+  contactUnlockedIdx: index('quote_requests_contact_unlocked_idx').on(table.isContactUnlocked),
 }));
 
 // Attorney profiles table - enhanced professional information
@@ -218,6 +230,154 @@ export const screeningViews = pgTable('screening_views', {
   uniqueScreeningAttorney: unique('screening_views_screening_attorney_unique').on(table.screeningId, table.attorneyId),
 }));
 
+// ============================================================================
+// QUOTE SYSTEM ENHANCEMENT TABLES
+// ============================================================================
+
+// Quote Line Items - Itemized quote breakdown
+export const quoteLineItems = pgTable('quote_line_items', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  quoteRequestId: uuid('quote_request_id').notNull().references(() => quoteRequests.id, { onDelete: 'cascade' }),
+  description: text('description').notNull(),
+  amount: real('amount').notNull(),
+  quantity: integer('quantity').default(1).notNull(),
+  feeType: text('fee_type', {
+    enum: ['flat_fee', 'hourly', 'government_fee', 'filing_fee', 'consultation', 'retainer', 'other']
+  }).notNull().default('flat_fee'),
+  isOptional: boolean('is_optional').default(false).notNull(), // Client can opt-out of optional items
+  sortOrder: integer('sort_order').default(0).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+  quoteRequestIdx: index('quote_line_items_quote_request_idx').on(table.quoteRequestId),
+}));
+
+// Quote Threads - Quote-bound conversations with rate limiting
+export const quoteThreads = pgTable('quote_threads', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  quoteRequestId: uuid('quote_request_id').notNull().references(() => quoteRequests.id, { onDelete: 'cascade' }),
+  organizationId: uuid('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  state: text('state', { enum: ['open', 'closed', 'archived'] }).notNull().default('open'),
+  clarificationRound: integer('clarification_round').default(1).notNull(), // Current negotiation round
+  attorneyQuestionsCount: integer('attorney_questions_count').default(0).notNull(), // Rate limit tracking
+  clientQuestionsCount: integer('client_questions_count').default(0).notNull(), // Rate limit tracking
+  maxQuestionsPerRound: integer('max_questions_per_round').default(3).notNull(), // Configurable limit
+  closedAt: timestamp('closed_at'),
+  closedReason: text('closed_reason', {
+    enum: ['quote_accepted', 'quote_declined', 'quote_expired', 'manually_closed', 'contact_unlocked']
+  }),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+  quoteRequestIdx: index('quote_threads_quote_request_idx').on(table.quoteRequestId),
+  organizationIdx: index('quote_threads_organization_idx').on(table.organizationId),
+  stateIdx: index('quote_threads_state_idx').on(table.state),
+}));
+
+// Quote Thread Messages - PII-scrubbed messages within threads
+export const quoteThreadMessages = pgTable('quote_thread_messages', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  threadId: uuid('thread_id').notNull().references(() => quoteThreads.id, { onDelete: 'cascade' }),
+  senderId: uuid('sender_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  senderRole: text('sender_role', { enum: ['client', 'attorney', 'staff', 'system'] }).notNull(),
+  messageType: text('message_type', {
+    enum: ['clarification_question', 'clarification_response', 'counteroffer_message', 'general', 'system_notification']
+  }).notNull().default('general'),
+  content: text('content').notNull(), // Scrubbed message content
+  originalContent: text('original_content'), // Pre-scrub content for audit/compliance
+  piiScrubbed: boolean('pii_scrubbed').default(false).notNull(), // Was PII detected and removed
+  piiScrubDetails: jsonb('pii_scrub_details'), // Details of what was scrubbed { detected: [...], replaced: [...] }
+  relatedCounterofferId: uuid('related_counteroffer_id'), // Links to counteroffer if message type is counteroffer_message
+  isRead: boolean('is_read').default(false).notNull(),
+  clarificationRound: integer('clarification_round').default(1).notNull(), // Which round this message belongs to
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+  threadIdx: index('quote_thread_messages_thread_idx').on(table.threadId),
+  senderIdx: index('quote_thread_messages_sender_idx').on(table.senderId),
+  typeIdx: index('quote_thread_messages_type_idx').on(table.messageType),
+  unreadIdx: index('quote_thread_messages_unread_idx').on(table.threadId, table.isRead),
+}));
+
+// Quote Counteroffers - Negotiation tracking
+export const quoteCounterOffers = pgTable('quote_counteroffers', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  quoteRequestId: uuid('quote_request_id').notNull().references(() => quoteRequests.id, { onDelete: 'cascade' }),
+  threadId: uuid('thread_id').references(() => quoteThreads.id, { onDelete: 'set null' }),
+  initiatorId: uuid('initiator_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  initiatorRole: text('initiator_role', { enum: ['client', 'attorney'] }).notNull(),
+  // Pricing changes
+  proposedAmount: real('proposed_amount'), // New total (if changing amount)
+  proposedLineItems: jsonb('proposed_line_items'), // Array of {description, amount, quantity, feeType} for detailed changes
+  // Scope changes
+  scopeChanges: text('scope_changes'), // Description of scope modifications
+  scopeAdditions: text('scope_additions').array(), // Services to add
+  scopeRemovals: text('scope_removals').array(), // Services to remove
+  // Negotiation context
+  reason: text('reason'), // Why this counteroffer is being made
+  negotiationRound: integer('negotiation_round').default(1).notNull(),
+  expiresAt: timestamp('expires_at'), // Counteroffer expiration
+  // Status tracking
+  status: text('status', {
+    enum: ['pending', 'accepted', 'rejected', 'withdrawn', 'expired', 'superseded']
+  }).notNull().default('pending'),
+  respondedAt: timestamp('responded_at'),
+  respondedBy: uuid('responded_by').references(() => users.id, { onDelete: 'set null' }),
+  responseNote: text('response_note'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+  quoteRequestIdx: index('quote_counteroffers_quote_request_idx').on(table.quoteRequestId),
+  threadIdx: index('quote_counteroffers_thread_idx').on(table.threadId),
+  initiatorIdx: index('quote_counteroffers_initiator_idx').on(table.initiatorId),
+  statusIdx: index('quote_counteroffers_status_idx').on(table.status),
+}));
+
+// Lead Unlock Records - Lead fee and contact unlock tracking
+export const leadUnlockRecords = pgTable('lead_unlock_records', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  quoteRequestId: uuid('quote_request_id').notNull().references(() => quoteRequests.id, { onDelete: 'cascade' }),
+  organizationId: uuid('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  attorneyId: uuid('attorney_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  clientId: uuid('client_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  // Unlock method
+  unlockMethod: text('unlock_method', {
+    enum: ['attorney_lead_fee', 'client_escrow', 'quote_accepted', 'admin_override']
+  }).notNull(),
+  // Payment tracking
+  leadFeeAmount: real('lead_fee_amount'), // Amount paid for lead (if attorney_lead_fee)
+  escrowAmount: real('escrow_amount'), // Amount held in escrow (if client_escrow)
+  paymentIntentId: text('payment_intent_id'), // Stripe/payment provider ID for future integration
+  paymentStatus: text('payment_status', {
+    enum: ['pending', 'processing', 'paid', 'failed', 'refunded', 'partially_refunded']
+  }).notNull().default('pending'),
+  // Unlock state
+  status: text('status', {
+    enum: ['pending', 'unlocked', 'revoked', 'refunded']
+  }).notNull().default('pending'),
+  unlockedAt: timestamp('unlocked_at'),
+  revokedAt: timestamp('revoked_at'),
+  revokedReason: text('revoked_reason'),
+  // Escrow management
+  escrowReleasedAt: timestamp('escrow_released_at'),
+  escrowReleasedTo: text('escrow_released_to', { enum: ['attorney', 'client', 'split'] }),
+  // Audit
+  createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+  quoteRequestIdx: index('lead_unlock_records_quote_request_idx').on(table.quoteRequestId),
+  organizationIdx: index('lead_unlock_records_organization_idx').on(table.organizationId),
+  attorneyIdx: index('lead_unlock_records_attorney_idx').on(table.attorneyId),
+  clientIdx: index('lead_unlock_records_client_idx').on(table.clientId),
+  statusIdx: index('lead_unlock_records_status_idx').on(table.status),
+  paymentStatusIdx: index('lead_unlock_records_payment_status_idx').on(table.paymentStatus),
+  uniqueQuoteAttorney: unique('lead_unlock_records_quote_attorney_unique').on(table.quoteRequestId, table.attorneyId),
+}));
+
+// ============================================================================
+// TYPE EXPORTS
+// ============================================================================
+
 export type Organization = typeof organizations.$inferSelect;
 export type NewOrganization = typeof organizations.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -248,3 +408,15 @@ export type AttorneyRating = typeof attorneyRatings.$inferSelect;
 export type NewAttorneyRating = typeof attorneyRatings.$inferInsert;
 export type ScreeningView = typeof screeningViews.$inferSelect;
 export type NewScreeningView = typeof screeningViews.$inferInsert;
+
+// Quote System Enhancement Types
+export type QuoteLineItem = typeof quoteLineItems.$inferSelect;
+export type NewQuoteLineItem = typeof quoteLineItems.$inferInsert;
+export type QuoteThread = typeof quoteThreads.$inferSelect;
+export type NewQuoteThread = typeof quoteThreads.$inferInsert;
+export type QuoteThreadMessage = typeof quoteThreadMessages.$inferSelect;
+export type NewQuoteThreadMessage = typeof quoteThreadMessages.$inferInsert;
+export type QuoteCounterOffer = typeof quoteCounterOffers.$inferSelect;
+export type NewQuoteCounterOffer = typeof quoteCounterOffers.$inferInsert;
+export type LeadUnlockRecord = typeof leadUnlockRecords.$inferSelect;
+export type NewLeadUnlockRecord = typeof leadUnlockRecords.$inferInsert;
