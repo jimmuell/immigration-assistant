@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
-import { Scale, Users, FileCheck, ArrowRight, LogOut, User } from "lucide-react";
+import { Scale, ArrowRight, LogOut, User, Users, FileCheck } from "lucide-react";
 import { useSession, signOut } from "next-auth/react";
 
 export function HeroSection() {
@@ -15,43 +15,51 @@ export function HeroSection() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
+    <div className="min-h-screen bg-gradient-to-b from-[#0a0f1a] via-[#111827] to-[#0f172a]">
       {/* Navigation */}
-      <nav className="bg-white border-b border-gray-200">
+      <nav className="border-b border-gray-800/50">
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Scale className="h-8 w-8 text-blue-600" />
-              <span className="text-2xl font-bold text-gray-900">LinkToLawyers</span>
+              <div className="w-9 h-9 bg-blue-600 rounded-lg flex items-center justify-center">
+                <Scale className="h-5 w-5 text-white" />
+              </div>
+              <span className="text-xl font-bold text-white">LinkToLawyers</span>
             </div>
             <div className="flex items-center gap-3">
               {session ? (
-                // Show user info and sign out when authenticated
                 <>
-                  <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-lg">
-                    <User className="h-4 w-4 text-gray-600" />
-                    <span className="text-sm font-medium text-gray-900">
+                  <div className="flex items-center gap-2 px-3 py-2 bg-gray-800/50 rounded-lg">
+                    <User className="h-4 w-4 text-gray-400" />
+                    <span className="text-sm font-medium text-gray-200">
                       {session.user?.name || session.user?.email}
                     </span>
                   </div>
                   <Button
                     variant="outline"
                     onClick={handleSignOut}
-                    className="text-gray-700 hover:text-gray-900 border-gray-300"
+                    className="text-gray-300 hover:text-white border-gray-700 hover:bg-gray-800"
                   >
                     <LogOut className="h-4 w-4 mr-2" />
                     Sign Out
                   </Button>
                 </>
               ) : (
-                // Show sign in button when not authenticated
-                <Button
-                  variant="ghost"
-                  onClick={() => router.push("/login")}
-                  className="text-gray-700 hover:text-gray-900 hover:bg-gray-100"
-                >
-                  Sign In
-                </Button>
+                <>
+                  <Button
+                    variant="ghost"
+                    onClick={() => router.push("/login")}
+                    className="text-gray-300 hover:text-white hover:bg-gray-800/50"
+                  >
+                    Sign In
+                  </Button>
+                  <Button
+                    onClick={() => router.push("/signup")}
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    Sign Up
+                  </Button>
+                </>
               )}
             </div>
           </div>
@@ -59,29 +67,33 @@ export function HeroSection() {
       </nav>
 
       {/* Hero Content */}
-      <div className="container mx-auto px-6 pt-20 pb-24">
+      <div className="container mx-auto px-6 pt-24 pb-16">
         <div className="max-w-4xl mx-auto text-center">
           {/* Badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-100 border border-blue-200 mb-8">
-            <span className="text-sm font-medium text-blue-800">
-              Connect with qualified attorneys for free quotes
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gray-800/60 border border-gray-700/50 mb-8">
+            <span className="w-2 h-2 rounded-full bg-green-500"></span>
+            <span className="text-sm font-medium text-gray-300">
+              Compare free quotes from top attorneys
             </span>
           </div>
 
           {/* Main Headline */}
-          <h1 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6 leading-tight">
-            Find Your Perfect <span className="text-blue-600">Legal Match</span>
+          <h1 className="text-5xl md:text-6xl font-bold text-white mb-6 leading-tight">
+            Find the Right Lawyer.{" "}
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-blue-600">
+              Get Free Quotes.
+            </span>
           </h1>
-          
-          <p className="text-xl text-gray-600 mb-10 max-w-2xl mx-auto leading-relaxed">
-            Connect with experienced immigration attorneys who understand your needs. 
-            Get free quotes and find the right lawyer to guide you through your journey.
+
+          <p className="text-lg text-gray-400 mb-10 max-w-2xl mx-auto leading-relaxed">
+            Describe your legal needs once and receive personalized quotes from
+            qualified attorneys. Compare options, read reviews, and choose the best fit
+            — all for free.
           </p>
 
           {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
             {session ? (
-              // Show dashboard button for authenticated users
               <Button
                 size="lg"
                 onClick={() => {
@@ -96,18 +108,17 @@ export function HeroSection() {
                     router.push("/client");
                   }
                 }}
-                className="bg-blue-600 hover:bg-blue-700 text-white font-semibold text-lg px-8 py-6 shadow-lg shadow-blue-600/30"
+                className="bg-blue-600 hover:bg-blue-700 text-white font-semibold text-lg px-8 py-6 rounded-xl"
               >
                 Go to Dashboard
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
             ) : (
-              // Show sign up buttons for unauthenticated users
               <>
                 <Button
                   size="lg"
                   onClick={() => router.push("/signup")}
-                  className="bg-blue-600 hover:bg-blue-700 text-white font-semibold text-lg px-8 py-6 shadow-lg shadow-blue-600/30"
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-semibold text-lg px-8 py-6 rounded-xl"
                 >
                   Get Started Free
                   <ArrowRight className="ml-2 h-5 w-5" />
@@ -116,7 +127,7 @@ export function HeroSection() {
                   size="lg"
                   variant="outline"
                   onClick={() => router.push("/admin/attorneys/onboard")}
-                  className="bg-white text-gray-700 border-2 border-gray-300 hover:bg-gray-50 font-semibold text-lg px-8 py-6"
+                  className="bg-transparent text-white border-2 border-gray-600 hover:bg-gray-800 hover:border-gray-500 font-semibold text-lg px-8 py-6 rounded-xl"
                 >
                   Join as Attorney
                 </Button>
@@ -124,56 +135,67 @@ export function HeroSection() {
             )}
           </div>
 
-          {/* Features Grid */}
-          <div className="grid md:grid-cols-3 gap-8 mt-20">
-            <div className="bg-white p-8 rounded-2xl shadow-md border border-gray-100">
-              <div className="w-14 h-14 bg-blue-100 rounded-xl flex items-center justify-center mb-4 mx-auto">
-                <Users className="h-7 w-7 text-blue-600" />
+          {/* Feature Cards */}
+          <div className="grid md:grid-cols-3 gap-6 mb-16">
+            <div className="bg-[#1a1f2e] p-8 rounded-2xl border border-gray-800/50 text-center">
+              <div className="w-14 h-14 bg-blue-500/20 rounded-xl flex items-center justify-center mb-5 mx-auto">
+                <Users className="h-7 w-7 text-blue-400" />
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-3">
+              <h3 className="text-xl font-semibold text-white mb-3">
                 Qualified Attorneys
               </h3>
-              <p className="text-gray-600 leading-relaxed">
+              <p className="text-gray-400 leading-relaxed">
                 Connect with experienced immigration lawyers who are verified and ready to help with your case.
               </p>
             </div>
 
-            <div className="bg-white p-8 rounded-2xl shadow-md border border-gray-100">
-              <div className="w-14 h-14 bg-green-100 rounded-xl flex items-center justify-center mb-4 mx-auto">
-                <FileCheck className="h-7 w-7 text-green-600" />
+            <div className="bg-[#1a1f2e] p-8 rounded-2xl border border-gray-800/50 text-center">
+              <div className="w-14 h-14 bg-green-500/20 rounded-xl flex items-center justify-center mb-5 mx-auto">
+                <FileCheck className="h-7 w-7 text-green-400" />
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-3">
+              <h3 className="text-xl font-semibold text-white mb-3">
                 Free Quotes
               </h3>
-              <p className="text-gray-600 leading-relaxed">
+              <p className="text-gray-400 leading-relaxed">
                 Get free initial consultations and quotes from multiple attorneys to find the best fit for your needs.
               </p>
             </div>
 
-            <div className="bg-white p-8 rounded-2xl shadow-md border border-gray-100">
-              <div className="w-14 h-14 bg-indigo-100 rounded-xl flex items-center justify-center mb-4 mx-auto">
-                <Scale className="h-7 w-7 text-indigo-600" />
+            <div className="bg-[#1a1f2e] p-8 rounded-2xl border border-gray-800/50 text-center">
+              <div className="w-14 h-14 bg-indigo-500/20 rounded-xl flex items-center justify-center mb-5 mx-auto">
+                <Scale className="h-7 w-7 text-indigo-400" />
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-3">
+              <h3 className="text-xl font-semibold text-white mb-3">
                 Simple Process
               </h3>
-              <p className="text-gray-600 leading-relaxed">
-                Tell us about your case, receive quotes from attorneys, and choose the one that's right for you.
+              <p className="text-gray-400 leading-relaxed">
+                Tell us about your case, receive quotes from attorneys, and choose the one that&apos;s right for you.
               </p>
+            </div>
+          </div>
+
+          {/* Trust Stats */}
+          <div className="pt-8 border-t border-gray-800/50">
+            <p className="text-sm text-gray-500 mb-6">Trusted by thousands of clients nationwide</p>
+            <div className="flex flex-wrap justify-center gap-8 md:gap-16">
+              <div className="text-center">
+                <div className="text-4xl font-bold text-white mb-1">10K+</div>
+                <div className="text-sm text-gray-500">Cases Matched</div>
+              </div>
+              <div className="hidden md:block w-px bg-gray-800"></div>
+              <div className="text-center">
+                <div className="text-4xl font-bold text-white mb-1">2,500+</div>
+                <div className="text-sm text-gray-500">Attorneys</div>
+              </div>
+              <div className="hidden md:block w-px bg-gray-800"></div>
+              <div className="text-center">
+                <div className="text-4xl font-bold text-white mb-1">4.9/5</div>
+                <div className="text-sm text-gray-500">Client Rating</div>
+              </div>
             </div>
           </div>
         </div>
       </div>
-
-      {/* Footer */}
-      <footer className="bg-gray-900 text-white py-8">
-        <div className="container mx-auto px-6 text-center">
-          <p className="text-gray-400">
-            © {new Date().getFullYear()} LinkToLawyers. All rights reserved.
-          </p>
-        </div>
-      </footer>
     </div>
   );
 }
-

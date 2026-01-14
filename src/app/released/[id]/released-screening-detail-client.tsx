@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MessagesTab } from "../../attorney/screenings/[id]/tabs/messages-tab";
 import { DocumentsTab } from "../../attorney/screenings/[id]/tabs/documents-tab";
 import { useState } from "react";
-import { acceptQuote, declineQuote } from "../../completed/[id]/actions";
+import { acceptQuote, declineQuote } from "../../screenings/[id]/actions";
 import { toast } from "sonner";
 import {
   AlertDialog,

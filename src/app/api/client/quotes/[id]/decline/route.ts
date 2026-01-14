@@ -64,7 +64,7 @@ export async function POST(
     // Revalidate relevant paths
     revalidatePath('/my-quotes');
     revalidatePath('/attorney/quotes');
-    revalidatePath(`/completed/${quote.screeningId}`);
+    revalidatePath(`/screenings/${quote.screeningId}`);
 
     return NextResponse.json({ 
       success: true,

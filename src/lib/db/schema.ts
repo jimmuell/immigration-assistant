@@ -161,6 +161,7 @@ export const quoteRequests = pgTable('quote_requests', {
   // Negotiation tracking
   negotiationRoundCount: integer('negotiation_round_count').default(0).notNull(), // Number of counteroffer rounds
   currentCounterofferId: uuid('current_counteroffer_id'), // Active counteroffer (added via migration)
+  originalAmount: real('original_amount'), // Original quote amount before any revisions (null if never revised)
   // Line items support
   totalAmount: real('total_amount'), // Computed from line items (denormalized for query performance)
   hasLineItems: boolean('has_line_items').default(false).notNull(), // Quick check for itemized vs single amount

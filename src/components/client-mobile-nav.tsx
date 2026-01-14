@@ -41,8 +41,8 @@ export function ClientMobileNav() {
       icon: Bookmark,
     },
     {
-      name: "Completed",
-      href: "/completed",
+      name: "Screenings",
+      href: "/screenings",
       icon: CheckCircle,
     },
     {

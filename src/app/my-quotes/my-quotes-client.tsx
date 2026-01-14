@@ -14,11 +14,11 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { 
-  DollarSign, 
-  CheckCircle, 
-  XCircle, 
-  Clock, 
+import {
+  DollarSign,
+  CheckCircle,
+  XCircle,
+  Clock,
   AlertTriangle,
   Calendar,
   User,
@@ -27,6 +27,8 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { ClientMobileNav } from "@/components/client-mobile-nav";
+import { DashboardHeader } from "@/components/dashboard/dashboard-header";
 
 interface Quote {
   id: string;
@@ -241,8 +243,10 @@ export default function MyQuotesClient() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-linear-to-br from-gray-50 to-gray-100 pb-24 md:pb-6">
-        <div className="container mx-auto p-6 md:pt-8">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 pb-24 md:pb-6">
+        <ClientMobileNav />
+        <div className="container mx-auto p-6 md:pt-8 space-y-6">
+          <DashboardHeader title="Quotes Received" />
           <div className="flex items-center justify-center py-12">
             <div className="text-center">
               <DollarSign className="h-12 w-12 mx-auto mb-4 text-blue-600 animate-pulse" />
@@ -256,8 +260,10 @@ export default function MyQuotesClient() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-linear-to-br from-gray-50 to-gray-100 pb-24 md:pb-6">
-        <div className="container mx-auto p-6 md:pt-8">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 pb-24 md:pb-6">
+        <ClientMobileNav />
+        <div className="container mx-auto p-6 md:pt-8 space-y-6">
+          <DashboardHeader title="Quotes Received" />
           <Card className="p-6 bg-white">
             <div className="text-center py-12">
               <AlertCircle className="h-12 w-12 mx-auto mb-4 text-red-600" />
@@ -279,10 +285,10 @@ export default function MyQuotesClient() {
     return (
       <Card key={quote.id} className={`p-6 ${bgColor} border-l-4 ${borderColor}`}>
         <div className="space-y-4">
-          <div className="flex items-start justify-between gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-2 flex-wrap">
-                <h3 className={`font-semibold text-lg ${status === 'declined' ? 'text-gray-700' : ''}`}>{quote.flowName}</h3>
+                <h3 className={`font-semibold text-base sm:text-lg ${status === 'declined' ? 'text-gray-700' : ''}`}>{quote.flowName}</h3>
                 {getStatusBadge(quote)}
                 <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Flat Fee</Badge>
               </div>
@@ -313,13 +319,15 @@ export default function MyQuotesClient() {
                 )}
               </div>
             </div>
-            <Link href={`/completed/${quote.screeningId}?from=quotes`}>
-              <Button variant="outline" size="sm">
-                View Screening
-              </Button>
-            </Link>
+            <div className="sm:shrink-0">
+              <Link href={`/screenings/${quote.screeningId}?from=quotes`}>
+                <Button variant="outline" size="sm" className="w-full sm:w-auto">
+                  View Screening
+                </Button>
+              </Link>
+            </div>
           </div>
-          
+
           {quote.description && status !== 'declined' && (
             <div className="text-sm text-muted-foreground">
               {quote.description}
@@ -408,15 +416,13 @@ export default function MyQuotesClient() {
   };
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-gray-50 to-gray-100 pb-24 md:pb-6">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 pb-24 md:pb-6">
+      <ClientMobileNav />
       <div className="container mx-auto p-6 md:pt-8 space-y-6">
-        {/* Header */}
-        <div>
-          <h1 className="text-3xl font-bold mb-2">Quotes Received</h1>
-          <p className="text-muted-foreground">
-            Review and respond to quotes from attorneys
-          </p>
-        </div>
+        <DashboardHeader
+          title="Quotes Received"
+          subtitle="Review and respond to quotes from attorneys"
+        />
 
         {/* No Quotes State */}
         {quotes.length === 0 ? (
@@ -505,25 +511,27 @@ export default function MyQuotesClient() {
               <AlertCircle className="h-5 w-5 text-amber-600" />
               Confirm Quote Acceptance
             </DialogTitle>
-            <DialogDescription className="space-y-3 pt-2">
-              <p>
-                You are about to accept this quote for{' '}
-                <strong className="text-blue-600">
-                  {quoteToAccept?.currency} {quoteToAccept?.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </strong>
-              </p>
-              <div className="bg-amber-50 border border-amber-200 p-3 rounded-lg">
-                <p className="text-sm font-medium text-amber-900 mb-1">Important:</p>
-                <ul className="text-sm text-amber-800 space-y-1 list-disc list-inside">
-                  <li>By accepting, you commit to working with this attorney</li>
-                  <li>All other pending quotes will be automatically declined</li>
-                  <li>Once accepted, you cannot freely cancel without attorney approval</li>
-                  <li>You can request to undo this, but it requires attorney review</li>
-                </ul>
+            <DialogDescription className="space-y-3 pt-2" asChild>
+              <div>
+                <span className="block">
+                  You are about to accept this quote for{' '}
+                  <strong className="text-blue-600">
+                    {quoteToAccept?.currency} {quoteToAccept?.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </strong>
+                </span>
+                <div className="bg-amber-50 border border-amber-200 p-3 rounded-lg">
+                  <span className="text-sm font-medium text-amber-900 mb-1 block">Important:</span>
+                  <ul className="text-sm text-amber-800 space-y-1 list-disc list-inside">
+                    <li>By accepting, you commit to working with this attorney</li>
+                    <li>All other pending quotes will be automatically declined</li>
+                    <li>Once accepted, you cannot freely cancel without attorney approval</li>
+                    <li>You can request to undo this, but it requires attorney review</li>
+                  </ul>
+                </div>
+                <span className="text-sm block">
+                  Are you sure you want to proceed?
+                </span>
               </div>
-              <p className="text-sm">
-                Are you sure you want to proceed?
-              </p>
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -550,14 +558,16 @@ export default function MyQuotesClient() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Decline Quote</DialogTitle>
-            <DialogDescription className="space-y-2 pt-2">
-              <p>
-                Are you sure you want to decline this quote from{' '}
-                <strong>{quoteToDecline?.attorneyName || quoteToDecline?.attorneyEmail}</strong>?
-              </p>
-              <p className="text-sm text-muted-foreground">
-                This action will notify the attorney that you&apos;ve declined their quote.
-              </p>
+            <DialogDescription className="space-y-2 pt-2" asChild>
+              <div>
+                <span className="block">
+                  Are you sure you want to decline this quote from{' '}
+                  <strong>{quoteToDecline?.attorneyName || quoteToDecline?.attorneyEmail}</strong>?
+                </span>
+                <span className="text-sm text-muted-foreground block">
+                  This action will notify the attorney that you&apos;ve declined their quote.
+                </span>
+              </div>
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -587,30 +597,32 @@ export default function MyQuotesClient() {
               <AlertTriangle className="h-5 w-5 text-amber-600" />
               Request to Undo Acceptance
             </DialogTitle>
-            <DialogDescription className="space-y-3 pt-2">
-              <div className="bg-amber-50 border border-amber-200 p-3 rounded-lg">
-                <p className="text-sm font-medium text-amber-900 mb-1">Please Note:</p>
-                <ul className="text-sm text-amber-800 space-y-1 list-disc list-inside">
-                  <li>This request will be sent to the attorney for review</li>
-                  <li>The attorney may have already started work on your case</li>
-                  <li>You may be responsible for any work already completed</li>
-                  <li>The attorney will contact you to discuss your request</li>
-                </ul>
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-900">
-                  Please explain why you need to undo this acceptance (minimum 10 characters):
-                </label>
-                <Textarea
-                  value={rejectionReason}
-                  onChange={(e) => setRejectionReason(e.target.value)}
-                  placeholder="E.g., I made a mistake and meant to accept a different quote, or my circumstances have changed..."
-                  rows={4}
-                  className="w-full"
-                />
-                <p className="text-xs text-muted-foreground">
-                  {rejectionReason.length} / 10 characters minimum
-                </p>
+            <DialogDescription className="space-y-3 pt-2" asChild>
+              <div>
+                <div className="bg-amber-50 border border-amber-200 p-3 rounded-lg">
+                  <span className="text-sm font-medium text-amber-900 mb-1 block">Please Note:</span>
+                  <ul className="text-sm text-amber-800 space-y-1 list-disc list-inside">
+                    <li>This request will be sent to the attorney for review</li>
+                    <li>The attorney may have already started work on your case</li>
+                    <li>You may be responsible for any work already completed</li>
+                    <li>The attorney will contact you to discuss your request</li>
+                  </ul>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-900">
+                    Please explain why you need to undo this acceptance (minimum 10 characters):
+                  </label>
+                  <Textarea
+                    value={rejectionReason}
+                    onChange={(e) => setRejectionReason(e.target.value)}
+                    placeholder="E.g., I made a mistake and meant to accept a different quote, or my circumstances have changed..."
+                    rows={4}
+                    className="w-full"
+                  />
+                  <span className="text-xs text-muted-foreground block">
+                    {rejectionReason.length} / 10 characters minimum
+                  </span>
+                </div>
               </div>
             </DialogDescription>
           </DialogHeader>

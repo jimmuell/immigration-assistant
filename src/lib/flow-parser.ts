@@ -86,12 +86,12 @@ export interface FlowStep {
     options?: string[];
   }>;
   // For end/success nodes
-  thankYouTitle?: string;
-  thankYouMessage?: string;
+  thankYouTitle?: string | null;
+  thankYouMessage?: string | null;
   // For info nodes
-  infoMessage?: string;
+  infoMessage?: string | null;
   // For subflow nodes
-  subflowId?: string;
+  subflowId?: string | null;
 }
 
 export interface ParsedFlow {

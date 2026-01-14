@@ -167,7 +167,7 @@ export default function FlowEditorClient({
     // Check for unsupported node types
     const supportedTypes = ['start', 'yes-no', 'text', 'form', 'end', 'success', 'multiple-choice', 'info', 'subflow', 'date'];
     nodes.forEach(node => {
-      if (!supportedTypes.includes(node.type)) {
+      if (node.type && !supportedTypes.includes(node.type)) {
         const nodeLabel = (node.data as any).label || node.type;
         errors.push({
           type: 'error',

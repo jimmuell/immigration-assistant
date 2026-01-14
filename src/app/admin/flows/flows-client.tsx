@@ -328,7 +328,9 @@ export default function FlowsClient({ initialFlows, userRole }: FlowsClientProps
                       <div className="flex items-center gap-2">
                         {flow.name}
                         {isGlobalFlow && (
-                          <Globe className="h-4 w-4 text-blue-600" title="Global Flow" />
+                          <span title="Global Flow">
+                            <Globe className="h-4 w-4 text-blue-600" />
+                          </span>
                         )}
                       </div>
                     </td>

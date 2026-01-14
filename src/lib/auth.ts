@@ -43,12 +43,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             return null;
           }
 
-          // Get organization name
-          const [organization] = await db
-            .select()
-            .from(organizations)
-            .where(eq(organizations.id, user.organizationId))
-            .limit(1);
+          // Get organization name if user has an organization
+          let organizationName = '';
+          if (user.organizationId) {
+            const [organization] = await db
+              .select()
+              .from(organizations)
+              .where(eq(organizations.id, user.organizationId))
+              .limit(1);
+            organizationName = organization?.name || '';
+          }
 
           return {
             id: user.id,
@@ -56,8 +60,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             name: user.name,
             image: user.image,
             role: user.role as 'client' | 'attorney' | 'org_admin' | 'super_admin',
-            organizationId: user.organizationId,
-            organizationName: organization?.name,
+            organizationId: user.organizationId || '',
+            organizationName,
           };
         } catch (error) {
           console.error("Auth error:", error);

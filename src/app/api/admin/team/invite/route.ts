@@ -9,8 +9,8 @@ import { z } from "zod";
 const inviteSchema = z.object({
   email: z.string().email("Invalid email address"),
   name: z.string().min(2, "Name must be at least 2 characters"),
-  role: z.enum(['staff', 'attorney'], {
-    errorMap: () => ({ message: "Role must be either 'staff' or 'attorney'" })
+  role: z.enum(['staff', 'attorney'] as const, {
+    message: "Role must be either 'staff' or 'attorney'"
   }),
 });
 

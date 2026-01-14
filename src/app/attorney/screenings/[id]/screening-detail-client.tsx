@@ -8,11 +8,12 @@
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { MessageSquare, FileText, DollarSign, ClipboardList } from "lucide-react";
+import { MessageSquare, FileText, DollarSign, ClipboardList, Edit3 } from "lucide-react";
 import { DocumentsTab } from "./tabs/documents-tab";
 import { QuoteTab } from "./tabs/quote-tab";
 import { ResponsesTab } from "./tabs/responses-tab";
 import { QuoteThreadTab } from "./tabs/quote-thread-tab";
+import { ReviseQuoteTab } from "./tabs/revise-quote-tab";
 
 interface Response {
   question: string;
@@ -44,6 +45,7 @@ interface Quote {
   createdAt: Date;
   updatedAt: Date;
   isContactUnlocked?: boolean;
+  originalAmount?: number | null;
 }
 
 interface ScreeningDetailClientProps {
@@ -71,11 +73,26 @@ export default function ScreeningDetailClient({
 
   // Show messages tab only when a quote exists (PII-protected messaging)
   const showMessagesTab = !!quote;
+  // Show revise quote tab when quote exists and is pending (attorney-only)
+  const showReviseTab = !!quote && quote.status === 'pending';
+
+  // Calculate grid columns based on visible tabs
+  // Use explicit class names so Tailwind can detect them at build time
+  const getGridCols = () => {
+    const cols = 3 + (showMessagesTab ? 1 : 0) + (showReviseTab ? 1 : 0);
+    // Map to explicit Tailwind classes
+    const colsMap: Record<number, string> = {
+      3: 'grid-cols-3',
+      4: 'grid-cols-4',
+      5: 'grid-cols-5',
+    };
+    return colsMap[cols] || 'grid-cols-3';
+  };
 
   return (
     <Card className="p-6">
       <Tabs id={`attorney-screening-tabs-${screeningId}`} value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className={`grid w-full mb-6 ${showMessagesTab ? 'grid-cols-4' : 'grid-cols-3'}`}>
+        <TabsList className={`grid w-full mb-6 ${getGridCols()}`}>
           <TabsTrigger value="responses" className="flex items-center gap-2">
             <ClipboardList className="h-4 w-4" />
             <span className="hidden sm:inline">Responses</span>
@@ -100,6 +117,12 @@ export default function ScreeningDetailClient({
               <span className="ml-1 text-xs text-green-600">✓</span>
             )}
           </TabsTrigger>
+          {showReviseTab && (
+            <TabsTrigger value="revise" className="flex items-center gap-2">
+              <Edit3 className="h-4 w-4" />
+              <span className="hidden sm:inline">Revise Quote</span>
+            </TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="responses">
@@ -135,6 +158,24 @@ export default function ScreeningDetailClient({
             status={status}
           />
         </TabsContent>
+
+        {showReviseTab && quote && (
+          <TabsContent value="revise">
+            <ReviseQuoteTab
+              screeningId={screeningId}
+              quoteRequestId={quote.id}
+              quote={{
+                id: quote.id,
+                amount: quote.amount,
+                status: quote.status,
+                description: quote.description,
+                currency: quote.currency,
+                originalAmount: quote.originalAmount,
+              }}
+              attorneyId={attorneyId}
+            />
+          </TabsContent>
+        )}
       </Tabs>
     </Card>
   );

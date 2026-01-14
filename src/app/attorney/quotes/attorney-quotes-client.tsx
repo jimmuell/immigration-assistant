@@ -27,6 +27,8 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { DashboardHeader } from "@/components/dashboard/dashboard-header";
+import { AttorneyMobileNav } from "@/components/attorney-mobile-nav";
 
 interface Quote {
   id: string;
@@ -171,10 +173,10 @@ export default function AttorneyQuotesClient() {
     return (
       <Card key={quote.id} className={`p-6 ${bgColor} border-l-4 ${borderColor}`}>
         <div className="space-y-4">
-          <div className="flex items-start justify-between gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-2 flex-wrap">
-                <h3 className={`font-semibold text-lg ${status === 'declined' ? 'text-gray-700' : ''}`}>{quote.flowName}</h3>
+                <h3 className={`font-semibold text-base sm:text-lg ${status === 'declined' ? 'text-gray-700' : ''}`}>{quote.flowName}</h3>
                 {getStatusBadge(quote)}
                 <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Flat Fee</Badge>
               </div>
@@ -211,11 +213,13 @@ export default function AttorneyQuotesClient() {
                 )}
               </div>
             </div>
-            <Link href={`/attorney/screenings/${quote.screeningId}`}>
-              <Button variant="outline" size="sm">
-                View Screening
-              </Button>
-            </Link>
+            <div className="sm:shrink-0">
+              <Link href={`/attorney/screenings/${quote.screeningId}?from=quotes`}>
+                <Button variant="outline" size="sm" className="w-full sm:w-auto">
+                  View Screening
+                </Button>
+              </Link>
+            </div>
           </div>
           
           {quote.description && status !== 'declined' && (
@@ -274,6 +278,7 @@ export default function AttorneyQuotesClient() {
   if (loading) {
     return (
       <div className="min-h-screen bg-linear-to-br from-gray-50 to-gray-100 pb-24 md:pb-6">
+        <AttorneyMobileNav />
         <div className="container mx-auto p-6 md:pt-8">
           <div className="flex items-center justify-center py-12">
             <div className="text-center">
@@ -289,6 +294,7 @@ export default function AttorneyQuotesClient() {
   if (error) {
     return (
       <div className="min-h-screen bg-linear-to-br from-gray-50 to-gray-100 pb-24 md:pb-6">
+        <AttorneyMobileNav />
         <div className="container mx-auto p-6 md:pt-8">
           <Card className="p-6 bg-white">
             <div className="text-center py-12">
@@ -305,14 +311,13 @@ export default function AttorneyQuotesClient() {
 
   return (
     <div className="min-h-screen bg-linear-to-br from-gray-50 to-gray-100 pb-24 md:pb-6">
+      <AttorneyMobileNav />
       <div className="container mx-auto p-6 md:pt-8 space-y-6">
-        {/* Header */}
-        <div>
-          <h1 className="text-3xl font-bold mb-2">My Quotes</h1>
-          <p className="text-muted-foreground">
-            Track and manage quotes you&apos;ve submitted to clients
-          </p>
-        </div>
+        <DashboardHeader
+          title="My Quotes"
+          subtitle="Track and manage quotes you've submitted to clients"
+          icon={<DollarSign className="h-8 w-8 text-blue-600" />}
+        />
 
         {/* No Quotes State */}
         {quotes.length === 0 ? (

@@ -1,13 +1,23 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Bell, FileText, DollarSign, CheckCircle, X, AlertCircle, Check, Mail } from "lucide-react";
+import { Bell, FileText, DollarSign, CheckCircle, X, AlertCircle, Check, Mail, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { getNotifications, markNotificationAsRead, markNotificationAsUnread, dismissNotification, type Notification } from "@/app/notifications/actions";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -16,6 +26,8 @@ export function NotificationDropdown() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isOpen, setIsOpen] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [notificationToDelete, setNotificationToDelete] = useState<string | null>(null);
 
   useEffect(() => {
     loadNotifications();
@@ -59,15 +71,24 @@ export function NotificationDropdown() {
     }
   };
 
-  const handleDismiss = async (notificationId: string, e: React.MouseEvent) => {
+  const handleDismissClick = (notificationId: string, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    setNotificationToDelete(notificationId);
+    setDeleteConfirmOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!notificationToDelete) return;
     try {
-      await dismissNotification(notificationId);
+      await dismissNotification(notificationToDelete);
       await loadNotifications();
-      toast.success("Notification dismissed");
+      toast.success("Notification deleted");
     } catch (error) {
-      toast.error("Failed to dismiss notification");
+      toast.error("Failed to delete notification");
+    } finally {
+      setDeleteConfirmOpen(false);
+      setNotificationToDelete(null);
     }
   };
 
@@ -121,6 +142,7 @@ export function NotificationDropdown() {
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
   return (
+    <>
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon" className="relative hover:bg-gray-100">
@@ -132,9 +154,9 @@ export function NotificationDropdown() {
           )}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent 
-        align="end" 
-        className="w-[420px] p-0 bg-white border shadow-lg"
+      <DropdownMenuContent
+        align="end"
+        className="w-[340px] sm:w-[420px] p-0 bg-white border shadow-lg"
         sideOffset={8}
       >
         <div className="flex items-center justify-between border-b px-4 py-3 bg-gray-50">
@@ -146,7 +168,7 @@ export function NotificationDropdown() {
           )}
         </div>
 
-        <div className="max-h-[400px] overflow-y-auto bg-white">
+        <div className="max-h-[60vh] sm:max-h-[400px] overflow-y-auto bg-white">
           {isLoading ? (
             <div className="p-8 text-center text-sm text-gray-500 bg-white">
               Loading notifications...
@@ -156,7 +178,7 @@ export function NotificationDropdown() {
               <Bell className="mx-auto h-12 w-12 text-gray-300 mb-3" />
               <p className="text-sm font-medium text-gray-900 mb-1">No notifications</p>
               <p className="text-xs text-gray-500">
-                You're all caught up!
+                You&apos;re all caught up!
               </p>
             </div>
           ) : (
@@ -198,13 +220,17 @@ export function NotificationDropdown() {
                     </div>
                   </Link>
                   
-                  {/* Action buttons - show on hover */}
-                  <div className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 bg-white/90 backdrop-blur-sm rounded p-1">
+                  {/* Action buttons - always visible on mobile, show on hover for desktop */}
+                  <div
+                    className="absolute right-2 top-1/2 -translate-y-1/2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity flex gap-1 bg-white/90 backdrop-blur-sm rounded p-1 z-10"
+                    onClick={(e) => e.stopPropagation()}
+                    onTouchStart={(e) => e.stopPropagation()}
+                  >
                     {notification.isRead ? (
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-7 w-7 hover:bg-blue-100"
+                        className="h-8 w-8 sm:h-7 sm:w-7 hover:bg-blue-100 touch-manipulation"
                         onClick={(e) => handleMarkAsUnread(notification.id, e)}
                         title="Mark as unread (keeps notification)"
                       >
@@ -214,7 +240,7 @@ export function NotificationDropdown() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-7 w-7 hover:bg-blue-100"
+                        className="h-8 w-8 sm:h-7 sm:w-7 hover:bg-blue-100 touch-manipulation"
                         onClick={(e) => handleMarkAsRead(notification.id, e)}
                         title="Mark as read (keeps notification)"
                       >
@@ -224,11 +250,11 @@ export function NotificationDropdown() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-7 w-7 hover:bg-red-100"
-                      onClick={(e) => handleDismiss(notification.id, e)}
+                      className="h-8 w-8 sm:h-7 sm:w-7 hover:bg-red-100 touch-manipulation"
+                      onClick={(e) => handleDismissClick(notification.id, e)}
                       title="Delete notification"
                     >
-                      <X className="h-4 w-4 text-red-600" />
+                      <Trash2 className="h-4 w-4 text-red-600" />
                     </Button>
                   </div>
                 </div>
@@ -254,6 +280,29 @@ export function NotificationDropdown() {
         )}
       </DropdownMenuContent>
     </DropdownMenu>
+
+    <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete notification?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This notification will be permanently removed. This action cannot be undone.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel onClick={() => setNotificationToDelete(null)}>
+            Cancel
+          </AlertDialogCancel>
+          <AlertDialogAction
+            onClick={handleConfirmDelete}
+            className="bg-red-600 hover:bg-red-700"
+          >
+            Delete
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }
 

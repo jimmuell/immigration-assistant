@@ -30,6 +30,8 @@ export default function RootLayout({
       <head>
         {/* Prevent iOS from auto-detecting and converting phone numbers, dates, emails to links */}
         <meta name="format-detection" content="telephone=no, date=no, email=no, address=no" />
+        {/* Enable safe area inset support for iOS devices with notches/home indicators */}
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}

@@ -90,8 +90,8 @@ export async function acceptQuote(quoteId: string, screeningId: string) {
       })
       .where(eq(users.id, session.user.id));
 
-    revalidatePath(`/completed/${screeningId}`);
-    revalidatePath('/completed');
+    revalidatePath(`/screenings/${screeningId}`);
+    revalidatePath('/screenings');
     revalidatePath('/attorney/quotes');
     revalidatePath('/my-quotes');
 
@@ -144,8 +144,8 @@ export async function declineQuote(quoteId: string, screeningId: string) {
       })
       .where(eq(screenings.id, screeningId));
 
-    revalidatePath(`/completed/${screeningId}`);
-    revalidatePath('/completed');
+    revalidatePath(`/screenings/${screeningId}`);
+    revalidatePath('/screenings');
     revalidatePath('/attorney/quotes');
     revalidatePath('/my-quotes');
 

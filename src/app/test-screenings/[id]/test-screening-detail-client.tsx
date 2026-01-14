@@ -284,7 +284,7 @@ export default function TestScreeningDetailClient({
                 <DocumentsTab
                   screeningId={screening.id}
                   documents={documents}
-                  userRole="admin"
+                  userRole="attorney"
                 />
               </TabsContent>
             </Tabs>

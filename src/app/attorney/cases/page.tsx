@@ -6,7 +6,9 @@ import { auth } from "@/lib/auth";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { ArrowLeft, Briefcase, Clock, CheckCircle } from "lucide-react";
+import { Briefcase, Clock, CheckCircle } from "lucide-react";
+import { DashboardHeader } from "@/components/dashboard/dashboard-header";
+import { AttorneyMobileNav } from "@/components/attorney-mobile-nav";
 
 export default async function CasesPage() {
   await requireRole(['attorney', 'org_admin', 'staff', 'super_admin']);
@@ -71,27 +73,12 @@ export default async function CasesPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 pb-24 md:pb-6">
+      <AttorneyMobileNav />
       <div className="container mx-auto p-6 md:pt-8 space-y-6">
-        {/* Header */}
-        <div className="flex items-center gap-4">
-          <Link href="/attorney">
-            <Button variant="ghost" size="sm">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Dashboard
-            </Button>
-          </Link>
-        </div>
-
-        {/* Page Title */}
-        <div>
-          <h1 className="text-3xl font-bold mb-2 flex items-center gap-3">
-            <Briefcase className="h-8 w-8 text-blue-600" />
-            Active Cases
-          </h1>
-          <p className="text-muted-foreground">
-            All active cases with accepted quotes
-          </p>
-        </div>
+        <DashboardHeader
+          title="Active Cases"
+          icon={<Briefcase className="h-8 w-8 text-blue-600" />}
+        />
 
         {/* Cases List */}
         <Card className="p-6 bg-white">
@@ -108,11 +95,11 @@ export default async function CasesPage() {
               </div>
               {cases.map((caseItem) => (
                 <Card key={caseItem.id} className="p-4 hover:shadow-md transition-shadow border border-gray-200">
-                  <div className="flex items-start justify-between gap-4">
+                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-2">
+                      <div className="flex items-center gap-2 mb-2 flex-wrap">
                         {getStatusIcon(caseItem.status)}
-                        <h3 className="font-semibold text-lg truncate">{caseItem.flowName}</h3>
+                        <h3 className="font-semibold text-base sm:text-lg truncate">{caseItem.flowName}</h3>
                         <span className={`px-2 py-0.5 text-xs font-medium rounded-full whitespace-nowrap ${getStatusColor(caseItem.status)}`}>
                           {caseItem.status.replace('_', ' ')}
                         </span>
@@ -137,11 +124,13 @@ export default async function CasesPage() {
                         </span>
                       </div>
                     </div>
-                    <Link href={`/attorney/screenings/${caseItem.id}`}>
-                      <Button size="sm" className="whitespace-nowrap">
-                        Manage Case
-                      </Button>
-                    </Link>
+                    <div className="sm:shrink-0">
+                      <Link href={`/attorney/screenings/${caseItem.id}`}>
+                        <Button size="sm" className="w-full sm:w-auto whitespace-nowrap">
+                          Manage Case
+                        </Button>
+                      </Link>
+                    </div>
                   </div>
                 </Card>
               ))}

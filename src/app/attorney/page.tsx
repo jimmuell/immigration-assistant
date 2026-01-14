@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { auth } from "@/lib/auth";
 import Link from "next/link";
 import { CheckCircle, Clock, FileText, UserCheck } from "lucide-react";
+import { AttorneyMobileNav } from "@/components/attorney-mobile-nav";
 
 export default async function AttorneyDashboard() {
   // Ensure user has attorney, org_admin, staff, or super_admin role
@@ -127,6 +128,7 @@ export default async function AttorneyDashboard() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 pb-24 md:pb-6">
+      <AttorneyMobileNav />
       <div className="container mx-auto p-6 md:pt-8 space-y-8">
         <DashboardHeader userName={session?.user?.name?.split(' ')[0]} />
 
@@ -186,11 +188,11 @@ export default async function AttorneyDashboard() {
             <div className="space-y-3">
               {assignedScreenings.map((screening) => (
                 <Card key={screening.id} className="p-4 hover:shadow-md transition-shadow border border-gray-200">
-                  <div className="flex items-start justify-between gap-4">
+                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-2">
+                      <div className="flex items-center gap-2 mb-2 flex-wrap">
                         {getStatusIcon(screening.status)}
-                        <h3 className="font-semibold text-lg truncate">{screening.flowName}</h3>
+                        <h3 className="font-semibold text-base sm:text-lg truncate">{screening.flowName}</h3>
                         <span className={`px-2 py-0.5 text-xs font-medium rounded-full whitespace-nowrap ${getStatusColor(screening.status)}`}>
                           {screening.status.replace('_', ' ')}
                         </span>
@@ -210,11 +212,13 @@ export default async function AttorneyDashboard() {
                         </span>
                       </div>
                     </div>
-                    <Link href={`/attorney/screenings/${screening.id}`}>
-                      <Button size="sm" className="whitespace-nowrap">
-                        View Details
-                      </Button>
-                    </Link>
+                    <div className="sm:shrink-0">
+                      <Link href={`/attorney/screenings/${screening.id}`}>
+                        <Button size="sm" className="w-full sm:w-auto whitespace-nowrap">
+                          View Details
+                        </Button>
+                      </Link>
+                    </div>
                   </div>
                 </Card>
               ))}

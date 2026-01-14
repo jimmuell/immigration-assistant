@@ -126,8 +126,8 @@ async function createTestAccounts() {
 
       console.log(`✅ Created ${account.role}: ${account.email}`);
 
-      // If attorney or org_admin, create attorney profile (org_admins can also act as attorneys)
-      if (account.role === 'attorney' || (account.role === 'org_admin' && account.email === 'testattorney@test.com')) {
+      // If org_admin with attorney email, create attorney profile (org_admins can act as attorneys)
+      if (account.role === 'org_admin' && account.email === 'testattorney@test.com') {
         await db.insert(attorneyProfiles).values({
           userId: newUser.id,
           organizationId: account.organizationId,

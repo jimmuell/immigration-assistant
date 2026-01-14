@@ -2,7 +2,7 @@
 
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, CheckCircle, Calendar, FileText, UserCheck, MessageSquare, DollarSign, Send } from "lucide-react";
+import { ArrowLeft, CheckCircle, Calendar, FileText, UserCheck, MessageSquare, DollarSign, Send, Edit3 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DocumentsTab } from "../../attorney/screenings/[id]/tabs/documents-tab";
@@ -52,6 +52,7 @@ interface Quote {
   createdAt: Date;
   updatedAt: Date;
   isContactUnlocked: boolean;
+  originalAmount?: number | null;
 }
 
 interface Screening {
@@ -112,6 +113,18 @@ export default function ScreeningDetailClient({
 
   // Show messages tab only when a quote exists (PII-protected messaging)
   const showMessagesTab = !!quote;
+
+  // Calculate grid columns based on visible tabs (client view: responses, messages, documents)
+  // Use explicit class names so Tailwind can detect them at build time
+  const getGridCols = () => {
+    const cols = 2 + (showMessagesTab ? 1 : 0);
+    // Map to explicit Tailwind classes
+    const colsMap: Record<number, string> = {
+      2: 'grid-cols-2',
+      3: 'grid-cols-3',
+    };
+    return colsMap[cols] || 'grid-cols-2';
+  };
 
   const handleAcceptQuote = async () => {
     if (!quote) return;
@@ -202,11 +215,11 @@ export default function ScreeningDetailClient({
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => router.push(from === 'quotes' ? '/my-quotes' : '/completed')}
+            onClick={() => router.push(from === 'quotes' ? '/my-quotes' : '/screenings')}
             className="mb-4"
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
-            {from === 'quotes' ? 'Back to My Quotes' : 'Back to Completed'}
+            {from === 'quotes' ? 'Back to My Quotes' : 'Back to Screenings'}
           </Button>
 
           <div className="flex items-start justify-between">
@@ -268,11 +281,18 @@ export default function ScreeningDetailClient({
                 <div>
                   <p className="text-2xl font-bold text-purple-900" suppressHydrationWarning>${quote.amount.toLocaleString()}</p>
                   <p className="text-sm text-purple-700">Service Quote</p>
+                  {/* Revision indicator */}
+                  {quote.originalAmount && quote.originalAmount !== quote.amount && (
+                    <p className="text-sm text-blue-600 flex items-center gap-1 mt-1" suppressHydrationWarning>
+                      <Edit3 className="h-3 w-3" />
+                      Revised from ${quote.originalAmount.toLocaleString()}
+                    </p>
+                  )}
                 </div>
               </div>
               <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                quote.status === 'accepted' 
-                  ? 'bg-green-100 text-green-700' 
+                quote.status === 'accepted'
+                  ? 'bg-green-100 text-green-700'
                   : quote.status === 'declined'
                   ? 'bg-red-100 text-red-700'
                   : 'bg-yellow-100 text-yellow-700'
@@ -285,18 +305,18 @@ export default function ScreeningDetailClient({
             )}
             {quote.status === 'pending' && (
               <div className="flex gap-2 pt-3 border-t border-purple-200">
-                <Button 
-                  size="sm" 
-                  className="flex-1 bg-green-600 hover:bg-green-700" 
+                <Button
+                  size="sm"
+                  className="flex-1 bg-green-600 hover:bg-green-700"
                   onClick={() => setShowAcceptDialog(true)}
                   disabled={isProcessing}
                 >
                   Accept Quote
                 </Button>
-                <Button 
-                  size="sm" 
-                  variant="outline" 
-                  className="flex-1 text-red-600 hover:text-red-700 hover:bg-red-50" 
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="flex-1 text-red-600 hover:text-red-700 hover:bg-red-50"
                   onClick={() => setShowDeclineDialog(true)}
                   disabled={isProcessing}
                 >
@@ -311,7 +331,7 @@ export default function ScreeningDetailClient({
         <Card className="p-6">
           {screening.assignedAttorneyId ? (
             <Tabs id={`screening-tabs-${screening.id}`} value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className={`grid w-full mb-6 ${showMessagesTab ? 'grid-cols-3' : 'grid-cols-2'}`}>
+              <TabsList className={`grid w-full mb-6 ${getGridCols()}`}>
                 <TabsTrigger value="responses">
                   <FileText className="h-4 w-4 mr-2" />
                   Responses

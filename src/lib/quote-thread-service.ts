@@ -298,10 +298,14 @@ export async function sendMessage(params: SendMessageParams): Promise<SendMessag
 
 /**
  * Sends a system notification message (no PII scrubbing, no rate limits)
+ * @param threadId - The thread to send the message to
+ * @param content - The message content
+ * @param senderId - Optional sender ID (uses first admin user if not provided)
  */
 export async function sendSystemMessage(
   threadId: string,
-  content: string
+  content: string,
+  senderId?: string
 ): Promise<QuoteThreadMessage> {
   const [thread] = await db
     .select()
@@ -313,11 +317,35 @@ export async function sendSystemMessage(
     throw new Error('Thread not found');
   }
 
+  // If no senderId provided, try to find any admin user to use as sender
+  let actualSenderId = senderId;
+  if (!actualSenderId) {
+    const [adminUser] = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.role, 'super_admin'))
+      .limit(1);
+    actualSenderId = adminUser?.id;
+  }
+
+  // If still no sender, fall back to finding any user (shouldn't happen in production)
+  if (!actualSenderId) {
+    const [anyUser] = await db
+      .select({ id: users.id })
+      .from(users)
+      .limit(1);
+    actualSenderId = anyUser?.id;
+  }
+
+  if (!actualSenderId) {
+    throw new Error('No valid sender found for system message');
+  }
+
   const [message] = await db
     .insert(quoteThreadMessages)
     .values({
       threadId,
-      senderId: '00000000-0000-0000-0000-000000000000', // System sender
+      senderId: actualSenderId,
       senderRole: 'system',
       messageType: 'system_notification',
       content,

@@ -38,13 +38,13 @@ export function ReleasedScreeningsClient({ screenings }: ReleasedScreeningsClien
     <div className="space-y-4">
       {screenings.map((screening) => (
         <Card key={screening.id} className="p-4 hover:shadow-md transition-shadow border-l-4 border-l-blue-600">
-          <div className="flex items-start gap-4">
-            <div className="rounded-full bg-blue-100 p-2">
+          <div className="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4">
+            <div className="hidden sm:block rounded-full bg-blue-100 p-2 shrink-0">
               <Lock className="h-5 w-5 text-blue-600" />
             </div>
-            <div className="flex-1">
-              <div className="flex items-center gap-2">
-                <h3 className="font-semibold text-gray-900">{screening.flowName}</h3>
+            <div className="flex-1 min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h3 className="text-sm font-semibold text-gray-900">{screening.flowName}</h3>
                 <span className={`rounded-full px-2 py-0.5 text-xs font-medium capitalize ${
                   screening.status === 'submitted' ? 'bg-blue-100 text-blue-700' :
                   screening.status === 'assigned' ? 'bg-purple-100 text-purple-700' :
@@ -93,12 +93,14 @@ export function ReleasedScreeningsClient({ screenings }: ReleasedScreeningsClien
                 </div>
               )}
             </div>
-            <Link href={`/released/${screening.id}`}>
-              <Button variant="outline" size="sm">
-                <span>View Details</span>
-                <ArrowRight className="ml-1 h-4 w-4" />
-              </Button>
-            </Link>
+            <div className="sm:shrink-0">
+              <Link href={`/released/${screening.id}`}>
+                <Button variant="outline" size="sm" className="w-full sm:w-auto">
+                  <span>View Details</span>
+                  <ArrowRight className="ml-1 h-4 w-4" />
+                </Button>
+              </Link>
+            </div>
           </div>
         </Card>
       ))}

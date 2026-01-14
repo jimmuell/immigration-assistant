@@ -96,7 +96,7 @@ export async function sendQuoteThreadMessage(
 
     if (result.success) {
       revalidatePath(`/attorney/screenings/${params.screeningId}`);
-      revalidatePath(`/completed/${params.screeningId}`);
+      revalidatePath(`/screenings/${params.screeningId}`);
       revalidatePath(`/my-quotes`);
     }
 

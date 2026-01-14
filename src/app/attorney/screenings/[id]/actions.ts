@@ -32,7 +32,7 @@ export async function sendMessage({
       .returning();
 
     revalidatePath(`/attorney/screenings/${screeningId}`);
-    revalidatePath(`/completed/${screeningId}`);
+    revalidatePath(`/screenings/${screeningId}`);
 
     return { success: true, message };
   } catch (error) {
@@ -103,7 +103,7 @@ export async function submitQuote({
       .where(eq(screenings.id, screeningId));
 
     revalidatePath(`/attorney/screenings/${screeningId}`);
-    revalidatePath(`/completed/${screeningId}`);
+    revalidatePath(`/screenings/${screeningId}`);
     revalidatePath('/attorney');
     revalidatePath('/attorney/quotes');
     revalidatePath('/my-quotes');

@@ -3,12 +3,12 @@
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { screenings, quoteRequests, attorneyProfiles, organizations, notificationStates } from "@/lib/db/schema";
-import { eq, and, isNull, or, desc, count } from "drizzle-orm";
+import { eq, and, isNull, isNotNull, ne, or, desc, count } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
 export interface Notification {
   id: string;
-  type: 'new_screening' | 'quote_received' | 'pending_quote' | 'quote_accepted' | 'quote_declined' | 'needs_assignment';
+  type: 'new_screening' | 'quote_received' | 'quote_revised' | 'pending_quote' | 'quote_accepted' | 'quote_declined' | 'needs_assignment';
   title: string;
   message: string;
   link: string;
@@ -30,7 +30,7 @@ export async function getNotifications(): Promise<Notification[]> {
 
   // CLIENT NOTIFICATIONS
   if (userRole === 'client') {
-    // 1. Quotes Received (pending quotes)
+    // 1. Quotes Received (pending quotes that have NOT been revised)
     const quotedScreenings = await db
       .select({
         screeningId: screenings.id,
@@ -46,7 +46,9 @@ export async function getNotifications(): Promise<Notification[]> {
           eq(screenings.userId, userId),
           eq(quoteRequests.status, 'pending'),
           eq(screenings.status, 'quoted'),
-          eq(screenings.isTestMode, false)
+          eq(screenings.isTestMode, false),
+          // Exclude revised quotes - they get their own notification
+          isNull(quoteRequests.originalAmount)
         )
       )
       .orderBy(desc(quoteRequests.createdAt))
@@ -58,13 +60,52 @@ export async function getNotifications(): Promise<Notification[]> {
         type: 'quote_received',
         title: 'New Quote Received',
         message: `${screening.flowName}: ${screening.currency} ${screening.amount.toFixed(2)}`,
-        link: `/completed/${screening.screeningId}`,
+        link: `/my-quotes`,
         createdAt: screening.createdAt,
         icon: 'quote',
+        isRead: false,
       });
     });
 
-    // 2. Screenings In Review
+    // 2. Revised Quotes (quotes that have been updated by attorney)
+    // A quote is "revised" if it has an originalAmount set (meaning it was changed at least once)
+    const revisedQuotes = await db
+      .select({
+        screeningId: screenings.id,
+        flowName: screenings.flowName,
+        amount: quoteRequests.amount,
+        originalAmount: quoteRequests.originalAmount,
+        currency: quoteRequests.currency,
+        updatedAt: quoteRequests.updatedAt,
+      })
+      .from(screenings)
+      .innerJoin(quoteRequests, eq(quoteRequests.screeningId, screenings.id))
+      .where(
+        and(
+          eq(screenings.userId, userId),
+          eq(quoteRequests.status, 'pending'),
+          eq(screenings.status, 'quoted'),
+          eq(screenings.isTestMode, false),
+          isNotNull(quoteRequests.originalAmount)
+        )
+      )
+      .orderBy(desc(quoteRequests.updatedAt))
+      .limit(5);
+
+    revisedQuotes.forEach(quote => {
+      notifications.push({
+        id: `quote-revised-${quote.screeningId}`,
+        type: 'quote_revised',
+        title: 'Quote Revised',
+        message: `${quote.flowName}: ${quote.currency} ${quote.amount.toFixed(2)} (was ${quote.originalAmount?.toFixed(2)})`,
+        link: `/my-quotes`,
+        createdAt: quote.updatedAt || new Date(),
+        icon: 'quote',
+        isRead: false,
+      });
+    });
+
+    // 3. Screenings In Review
     const inReviewScreenings = await db
       .select({
         id: screenings.id,
@@ -92,9 +133,10 @@ export async function getNotifications(): Promise<Notification[]> {
         type: 'new_screening',
         title: 'Screening Under Review',
         message: `${screening.flowName} is being reviewed by our team`,
-        link: `/completed/${screening.id}`,
+        link: `/screenings/${screening.id}`,
         createdAt: screening.submittedAt || new Date(),
         icon: 'screening',
+        isRead: false,
       });
     });
   }
@@ -155,6 +197,7 @@ export async function getNotifications(): Promise<Notification[]> {
           link: `/attorney/screenings/${screening.id}`,
           createdAt: screening.createdAt,
           icon: 'screening',
+          isRead: false,
         });
       });
 
@@ -187,6 +230,7 @@ export async function getNotifications(): Promise<Notification[]> {
           link: `/attorney/screenings/${quote.screeningId}`,
           createdAt: quote.createdAt,
           icon: 'quote',
+          isRead: false,
         });
       });
 
@@ -214,11 +258,12 @@ export async function getNotifications(): Promise<Notification[]> {
         notifications.push({
           id: `accepted-${quote.screeningId}`,
           type: 'quote_accepted',
-          title: 'Quote Accepted! 🎉',
+          title: 'Quote Accepted!',
           message: `${quote.flowName} - Client accepted your quote`,
           link: `/attorney/cases`,
           createdAt: quote.updatedAt || new Date(),
           icon: 'check',
+          isRead: false,
         });
       });
     }
@@ -269,22 +314,17 @@ export async function getNotifications(): Promise<Notification[]> {
           link: `/admin/intakes`,
           createdAt: screening.createdAt,
           icon: 'alert',
+          isRead: false,
         });
       });
     }
   }
 
-  // Fetch notification states for this user
-  const notificationIds = notifications.map(n => n.id);
+  // Fetch notification states for this user (include dismissed to filter them out)
   const states = await db
     .select()
     .from(notificationStates)
-    .where(
-      and(
-        eq(notificationStates.userId, userId),
-        eq(notificationStates.isDismissed, false)
-      )
-    );
+    .where(eq(notificationStates.userId, userId));
 
   // Create a map of notification states
   const stateMap = new Map(states.map(s => [s.notificationId, s]));
@@ -331,11 +371,12 @@ export async function markNotificationAsRead(notificationId: string): Promise<{ 
       .limit(1);
 
     if (existing) {
-      // Update existing
+      // Update existing - also ensure isDismissed is false
       await db
         .update(notificationStates)
         .set({
           isRead: true,
+          isDismissed: false,
           updatedAt: new Date(),
         })
         .where(
@@ -384,11 +425,12 @@ export async function markNotificationAsUnread(notificationId: string): Promise<
       .limit(1);
 
     if (existing) {
-      // Update existing
+      // Update existing - also ensure isDismissed is false
       await db
         .update(notificationStates)
         .set({
           isRead: false,
+          isDismissed: false,
           updatedAt: new Date(),
         })
         .where(

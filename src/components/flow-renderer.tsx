@@ -308,7 +308,7 @@ export function FlowRenderer({ markdown, flowId, flowName, savedScreening, userR
       });
       
       // Navigate to appropriate page based on test mode
-      const redirectPath = isTestMode ? '/test-screenings' : '/completed';
+      const redirectPath = isTestMode ? '/test-screenings' : '/screenings';
       setTimeout(() => {
         router.push(redirectPath);
       }, 1500);

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Bookmark, CheckCircle, LogOut, ChevronLeft, ChevronRight, Users, Shield, UserCog, GitBranch, ClipboardList, FileText, DollarSign, CheckSquare, Briefcase, Building2, Crown, FlaskConical, Send, Settings, EyeOff, Eye, AlertTriangle, XCircle } from "lucide-react";
+import { Home, Bookmark, CheckCircle, LogOut, ChevronLeft, ChevronRight, Users, Shield, UserCog, GitBranch, ClipboardList, FileText, DollarSign, CheckSquare, Briefcase, Building2, Crown, FlaskConical, Send, Settings, AlertTriangle, XCircle } from "lucide-react";
 import { signOut, useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -154,8 +154,8 @@ export function DesktopSidebar() {
       roles: ['client'],
     },
     {
-      name: "Completed",
-      href: "/completed",
+      name: "Screenings",
+      href: "/screenings",
       icon: CheckCircle,
       roles: ['client'],
     },
@@ -362,23 +362,23 @@ export function DesktopSidebar() {
                 </p>
               )}
             </div>
-            {/* Admin Menu Toggle for org_admin/attorney */}
+            {/* Menu Toggle for admin users */}
             {canToggleAdminMenu && (
               <Button
                 onClick={toggleAdminMenu}
                 variant="outline"
-                className="w-full bg-white text-gray-700 hover:bg-gray-50 mb-2"
+                className={`w-full mb-2 ${showAdminMenu ? 'bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200' : 'bg-purple-50 text-purple-700 hover:bg-purple-100 border-purple-200'}`}
                 size="sm"
               >
                 {showAdminMenu ? (
                   <>
-                    <EyeOff className="mr-2 h-4 w-4" />
-                    Hide Admin Menu
+                    <Briefcase className="mr-2 h-4 w-4" />
+                    Switch to Attorney
                   </>
                 ) : (
                   <>
-                    <Eye className="mr-2 h-4 w-4" />
-                    Show Admin Menu
+                    <Shield className="mr-2 h-4 w-4" />
+                    Switch to Admin
                   </>
                 )}
               </Button>

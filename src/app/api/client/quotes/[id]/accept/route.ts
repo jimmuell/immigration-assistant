@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { quoteRequests, screenings, users } from "@/lib/db/schema";
+import { quoteRequests, screenings, users, quoteCounterOffers } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
@@ -72,14 +72,49 @@ export async function POST(
       );
     }
 
-    // Update the quote status to accepted and set acceptedAt timestamp
+    // Check for any accepted counteroffers and update quote amount if applicable
+    const [acceptedCounteroffer] = await db
+      .select()
+      .from(quoteCounterOffers)
+      .where(
+        and(
+          eq(quoteCounterOffers.quoteRequestId, quoteId),
+          eq(quoteCounterOffers.status, 'accepted')
+        )
+      )
+      .limit(1);
+
+    // Mark any pending counteroffers as superseded
     await db
-      .update(quoteRequests)
+      .update(quoteCounterOffers)
       .set({
-        status: 'accepted',
-        acceptedAt: new Date(),
+        status: 'superseded',
         updatedAt: new Date(),
       })
+      .where(
+        and(
+          eq(quoteCounterOffers.quoteRequestId, quoteId),
+          eq(quoteCounterOffers.status, 'pending')
+        )
+      );
+
+    // Update the quote status to accepted and set acceptedAt timestamp
+    // If there was an accepted counteroffer with a proposed amount, use that amount
+    const updateData: Record<string, unknown> = {
+      status: 'accepted',
+      acceptedAt: new Date(),
+      updatedAt: new Date(),
+      currentCounterofferId: null, // Clear active counteroffer reference
+    };
+
+    // Apply accepted counteroffer amount if present
+    if (acceptedCounteroffer?.proposedAmount) {
+      updateData.amount = acceptedCounteroffer.proposedAmount;
+    }
+
+    await db
+      .update(quoteRequests)
+      .set(updateData)
       .where(eq(quoteRequests.id, quoteId));
 
     // Update the screening status and assign the attorney
@@ -120,7 +155,7 @@ export async function POST(
     // Revalidate relevant paths
     revalidatePath('/my-quotes');
     revalidatePath('/attorney/quotes');
-    revalidatePath(`/completed/${quote.screeningId}`);
+    revalidatePath(`/screenings/${quote.screeningId}`);
 
     return NextResponse.json({ 
       success: true,

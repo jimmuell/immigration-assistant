@@ -5,6 +5,7 @@ import { getUserDraftScreenings } from "./actions";
 import Link from "next/link";
 import { SavedScreeningsClient } from "./saved-screenings-client";
 import { ClientMobileNav } from "@/components/client-mobile-nav";
+import { DashboardHeader } from "@/components/dashboard/dashboard-header";
 
 export default async function SavedPage() {
   const draftScreenings = await getUserDraftScreenings();
@@ -18,16 +19,10 @@ export default async function SavedPage() {
   };
 
   return (
-    <div className="h-full flex flex-col bg-gray-50 pb-20 md:pb-0">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 pb-24 md:pb-6">
       <ClientMobileNav />
-      <div className="flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-4xl px-4 py-6">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">Saved Screenings</h1>
-          <p className="mt-1 text-sm text-gray-600">
-            Resume your in-progress screenings from where you left off
-          </p>
-        </div>
+      <div className="container mx-auto p-6 md:pt-8 space-y-6">
+        <DashboardHeader title="Saved Screenings" />
 
         {draftScreenings.length === 0 ? (
           <Card className="p-12 text-center">
@@ -46,7 +41,7 @@ export default async function SavedPage() {
           <SavedScreeningsClient screenings={draftScreenings} />
         )}
 
-        <Card className="mt-6 bg-blue-50 p-4 border-blue-200">
+        <Card className="bg-blue-50 p-4 border-blue-200">
           <div className="flex items-start gap-3">
             <div className="rounded-lg bg-blue-100 p-2">
               <Bookmark className="h-5 w-5 text-blue-600" />
@@ -59,7 +54,6 @@ export default async function SavedPage() {
             </div>
           </div>
         </Card>
-        </div>
       </div>
     </div>
   );

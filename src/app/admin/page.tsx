@@ -45,11 +45,19 @@ export default async function AdminDashboard() {
     .where(eq(conversations.organizationId, organizationId));
 
   // Messages don't have organizationId, so we need to join with conversations
-  const [messageCount] = await db
-    .select({ count: count() })
-    .from(messages)
-    .innerJoin(conversations, eq(messages.conversationId, conversations.id))
-    .where(eq(conversations.organizationId, organizationId));
+  // Wrapped in try-catch to handle cases where messages table may not exist
+  let messageCount: { count: number } | undefined;
+  try {
+    const [result] = await db
+      .select({ count: count() })
+      .from(messages)
+      .innerJoin(conversations, eq(messages.conversationId, conversations.id))
+      .where(eq(conversations.organizationId, organizationId));
+    messageCount = result;
+  } catch {
+    // Messages table may not exist or query failed - default to 0
+    messageCount = { count: 0 };
+  }
 
   // Get screenings count - filtered by organization (excluding test screenings)
   const [screeningsCount] = await db
@@ -220,10 +228,10 @@ export default async function AdminDashboard() {
           </Card>
         </div>
 
-        {/* Recent Users Table */}
-        <Card className="p-6 bg-white">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-semibold">Recent Users</h2>
+        {/* Recent Users */}
+        <Card className="p-4 sm:p-6 bg-white">
+          <div className="flex items-center justify-between mb-4 sm:mb-6">
+            <h2 className="text-lg sm:text-xl font-semibold">Recent Users</h2>
             <Link href="/admin/users">
               <Button variant="outline" size="sm">
                 View All
@@ -231,59 +239,94 @@ export default async function AdminDashboard() {
               </Button>
             </Link>
           </div>
-          
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-gray-200">
-                  <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Name</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Email</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Role</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Joined Date</th>
-                </tr>
-              </thead>
-              <tbody>
-                {recentUsers.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} className="text-center py-8 text-muted-foreground">
-                      No users yet
-                    </td>
-                  </tr>
-                ) : (
-                  recentUsers.map((user) => (
-                    <tr key={user.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                      <td className="py-4 px-4">
-                        <div className="flex items-center gap-3">
-                          <div className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white text-sm font-medium">
-                            {user.name?.charAt(0) || user.email.charAt(0).toUpperCase()}
-                          </div>
-                          <span className="font-medium">{user.name || 'N/A'}</span>
+
+          {recentUsers.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              No users yet
+            </div>
+          ) : (
+            <>
+              {/* Mobile Card Layout */}
+              <div className="space-y-3 md:hidden">
+                {recentUsers.map((user) => (
+                  <div key={user.id} className="border rounded-lg p-3 hover:bg-gray-50 transition-colors">
+                    <div className="flex items-start gap-3">
+                      <div className="h-10 w-10 shrink-0 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white text-sm font-medium">
+                        {user.name?.charAt(0) || user.email.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-medium text-gray-900">{user.name || 'N/A'}</span>
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                            user.role === 'org_admin' ? 'bg-red-100 text-red-800' :
+                            user.role === 'super_admin' ? 'bg-red-100 text-red-800' :
+                            user.role === 'attorney' ? 'bg-purple-100 text-purple-800' :
+                            'bg-blue-100 text-blue-800'
+                          }`}>
+                            {user.role}
+                          </span>
                         </div>
-                      </td>
-                      <td className="py-4 px-4 text-sm text-muted-foreground">{user.email}</td>
-                      <td className="py-4 px-4">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          user.role === 'org_admin' ? 'bg-red-100 text-red-800' :
-                          user.role === 'super_admin' ? 'bg-red-100 text-red-800' :
-                          user.role === 'attorney' ? 'bg-purple-100 text-purple-800' :
-                          'bg-blue-100 text-blue-800'
-                        }`}>
-                          {user.role}
-                        </span>
-                      </td>
-                      <td className="py-4 px-4 text-sm text-muted-foreground" suppressHydrationWarning>
-                        {new Date(user.createdAt).toLocaleDateString('en-US', { 
-                          month: 'short', 
-                          day: 'numeric', 
-                          year: 'numeric' 
-                        })}
-                      </td>
+                        <p className="text-sm text-muted-foreground truncate mt-0.5">{user.email}</p>
+                        <p className="text-xs text-muted-foreground mt-1" suppressHydrationWarning>
+                          Joined {new Date(user.createdAt).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric'
+                          })}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Desktop Table Layout */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-gray-200">
+                      <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Name</th>
+                      <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Email</th>
+                      <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Role</th>
+                      <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Joined Date</th>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+                  </thead>
+                  <tbody>
+                    {recentUsers.map((user) => (
+                      <tr key={user.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                        <td className="py-4 px-4">
+                          <div className="flex items-center gap-3">
+                            <div className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white text-sm font-medium">
+                              {user.name?.charAt(0) || user.email.charAt(0).toUpperCase()}
+                            </div>
+                            <span className="font-medium">{user.name || 'N/A'}</span>
+                          </div>
+                        </td>
+                        <td className="py-4 px-4 text-sm text-muted-foreground">{user.email}</td>
+                        <td className="py-4 px-4">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            user.role === 'org_admin' ? 'bg-red-100 text-red-800' :
+                            user.role === 'super_admin' ? 'bg-red-100 text-red-800' :
+                            user.role === 'attorney' ? 'bg-purple-100 text-purple-800' :
+                            'bg-blue-100 text-blue-800'
+                          }`}>
+                            {user.role}
+                          </span>
+                        </td>
+                        <td className="py-4 px-4 text-sm text-muted-foreground" suppressHydrationWarning>
+                          {new Date(user.createdAt).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric'
+                          })}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
         </Card>
 
         {/* Quick Actions */}

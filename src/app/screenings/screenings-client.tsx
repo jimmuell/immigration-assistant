@@ -216,7 +216,7 @@ export function ScreeningsClient({ screenings: initialScreenings }: ScreeningsCl
                     </Button>
                   </Link>
                 )}
-                <Link href={`/completed/${screening.id}`}>
+                <Link href={`/screenings/${screening.id}`}>
                   <Button variant="ghost" size="sm">
                     <span>View</span>
                     <ArrowRight className="ml-1 h-4 w-4" />

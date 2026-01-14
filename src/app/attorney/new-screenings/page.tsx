@@ -6,7 +6,9 @@ import { auth } from "@/lib/auth";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { ArrowLeft, FileText, Clock, UserCheck } from "lucide-react";
+import { FileText, Clock, UserCheck } from "lucide-react";
+import { DashboardHeader } from "@/components/dashboard/dashboard-header";
+import { AttorneyMobileNav } from "@/components/attorney-mobile-nav";
 
 export default async function NewScreeningsPage() {
   await requireRole(['attorney', 'org_admin', 'staff', 'super_admin']);
@@ -89,27 +91,12 @@ export default async function NewScreeningsPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 pb-24 md:pb-6">
+      <AttorneyMobileNav />
       <div className="container mx-auto p-6 md:pt-8 space-y-6">
-        {/* Header */}
-        <div className="flex items-center gap-4">
-          <Link href="/attorney">
-            <Button variant="ghost" size="sm">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Dashboard
-            </Button>
-          </Link>
-        </div>
-
-        {/* Page Title */}
-        <div>
-          <h1 className="text-3xl font-bold mb-2 flex items-center gap-3">
-            <FileText className="h-8 w-8 text-blue-600" />
-            New Screenings
-          </h1>
-          <p className="text-muted-foreground">
-            Client screenings awaiting attorney review
-          </p>
-        </div>
+        <DashboardHeader
+          title="New Screenings"
+          icon={<FileText className="h-8 w-8 text-blue-600" />}
+        />
 
         {/* Info Card */}
         {requireStaffPreScreening && attorneyProfile && !isSuperAdmin ? (
@@ -163,7 +150,7 @@ export default async function NewScreeningsPage() {
                 <Card key={screening.id} className={`p-4 hover:shadow-md transition-shadow ${
                   isReviewedForMe ? 'border-2 border-blue-400 bg-blue-50/30' : 'border border-gray-200'
                 }`}>
-                  <div className="flex items-start justify-between gap-4">
+                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-2 flex-wrap">
                         {isReviewedForMe ? (
@@ -171,7 +158,7 @@ export default async function NewScreeningsPage() {
                         ) : (
                           <Clock className="h-4 w-4 text-gray-600" />
                         )}
-                        <h3 className="font-semibold text-lg truncate">{screening.flowName}</h3>
+                        <h3 className="font-semibold text-base sm:text-lg truncate">{screening.flowName}</h3>
                         <span className={`px-2 py-0.5 text-xs font-medium rounded-full whitespace-nowrap ${getStatusColor(screening.status)}`}>
                           {screening.status.replace('_', ' ')}
                         </span>
@@ -201,11 +188,13 @@ export default async function NewScreeningsPage() {
                         </span>
                       </div>
                     </div>
-                    <Link href={`/attorney/screenings/${screening.id}`}>
-                      <Button size="sm" className="whitespace-nowrap">
-                        {isReviewedForMe ? 'Review' : 'View Details'}
-                      </Button>
-                    </Link>
+                    <div className="sm:shrink-0">
+                      <Link href={`/attorney/screenings/${screening.id}`}>
+                        <Button size="sm" className="w-full sm:w-auto whitespace-nowrap">
+                          {isReviewedForMe ? 'Review' : 'View Details'}
+                        </Button>
+                      </Link>
+                    </div>
                   </div>
                 </Card>
               );

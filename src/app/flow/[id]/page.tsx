@@ -50,7 +50,7 @@ export default async function FlowPage({ params }: FlowPageProps) {
       // Check if the screening is locked
       if (draft.isLocked) {
         // Redirect to completed page if locked
-        redirect(`/completed/${draft.id}`);
+        redirect(`/screenings/${draft.id}`);
       }
       savedScreening = draft;
     }

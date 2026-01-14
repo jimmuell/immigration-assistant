@@ -143,7 +143,7 @@ export async function submitForReview(screeningId: string) {
       })
       .where(eq(screenings.id, screeningId));
 
-    revalidatePath('/completed');
+    revalidatePath('/screenings');
     revalidatePath('/client');
     
     return { success: true };
@@ -176,7 +176,7 @@ export async function unlockForEditing(screeningId: string, requestMessage?: str
       .where(eq(screenings.id, screeningId));
 
     revalidatePath('/attorney/screenings');
-    revalidatePath('/completed');
+    revalidatePath('/screenings');
     
     return { success: true };
   } catch (error) {

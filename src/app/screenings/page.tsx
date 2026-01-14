@@ -5,6 +5,7 @@ import { getUserScreenings } from "./actions";
 import Link from "next/link";
 import { ScreeningsClient } from "./screenings-client";
 import { ClientMobileNav } from "@/components/client-mobile-nav";
+import { DashboardHeader } from "@/components/dashboard/dashboard-header";
 
 export default async function CompletedPage() {
   const screenings = await getUserScreenings();
@@ -18,16 +19,10 @@ export default async function CompletedPage() {
   };
 
   return (
-    <div className="h-full flex flex-col bg-gray-50 pb-20 md:pb-0">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 pb-24 md:pb-6">
       <ClientMobileNav />
-      <div className="flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-4xl px-4 py-6">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">Completed Screenings</h1>
-          <p className="mt-1 text-sm text-gray-600">
-            Review and release your completed screenings to attorneys
-          </p>
-        </div>
+      <div className="container mx-auto p-6 md:pt-8 space-y-6">
+        <DashboardHeader title="Completed Screenings" />
 
         {screenings.length === 0 ? (
           <Card className="p-12 text-center">
@@ -46,7 +41,7 @@ export default async function CompletedPage() {
           <ScreeningsClient screenings={screenings} />
         )}
 
-        <Card className="mt-6 bg-blue-50 p-4 border-blue-200">
+        <Card className="bg-blue-50 p-4 border-blue-200">
           <div className="flex items-start gap-3">
             <div className="rounded-lg bg-blue-100 p-2">
               <CheckCircle className="h-5 w-5 text-blue-600" />
@@ -54,13 +49,12 @@ export default async function CompletedPage() {
             <div>
               <h3 className="font-semibold text-blue-900">Ready to Submit?</h3>
               <p className="mt-1 text-sm text-blue-700">
-                Review your completed screenings carefully. When ready, click "Submit for Review" 
+                Review your completed screenings carefully. When ready, click "Submit for Review"
                 to release them to our attorneys. Once released, screenings will move to the "Released" tab.
               </p>
             </div>
           </div>
         </Card>
-        </div>
       </div>
     </div>
   );

@@ -12,8 +12,10 @@ import { Button } from "@/components/ui/button";
 
 export default async function AttorneyScreeningDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ from?: string }>;
 }) {
   await requireRole(['attorney', 'org_admin', 'staff', 'super_admin']);
   const session = await auth();
@@ -21,6 +23,11 @@ export default async function AttorneyScreeningDetailPage({
   const userRole = session?.user?.role;
 
   const { id } = await params;
+  const { from } = await searchParams;
+
+  // Determine back link based on where the user came from
+  const backLink = from === 'quotes' ? '/attorney/quotes' : '/attorney';
+  const backLabel = from === 'quotes' ? 'Back to My Quotes' : 'Back to Dashboard';
 
   // Fetch screening with client info
   const screeningResults = await db
@@ -156,10 +163,10 @@ export default async function AttorneyScreeningDetailPage({
       <div className="container mx-auto p-6 md:pt-8 space-y-6">
         {/* Header */}
         <div className="flex items-center gap-4">
-          <Link href="/attorney">
+          <Link href={backLink}>
             <Button variant="ghost" size="sm">
               <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Dashboard
+              {backLabel}
             </Button>
           </Link>
         </div>

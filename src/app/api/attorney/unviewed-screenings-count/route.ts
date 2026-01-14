@@ -73,7 +73,7 @@ export async function GET() {
     const screeningIds = newScreenings.map(s => s.id);
 
     // Get viewed screenings for this attorney
-    let viewedScreenings = [];
+    let viewedScreenings: { screeningId: string }[] = [];
     if (screeningIds.length > 0) {
       try {
         viewedScreenings = await db
@@ -84,7 +84,7 @@ export async function GET() {
           .where(
             and(
               eq(screeningViews.attorneyId, attorneyId),
-              sql`${screeningViews.screeningId} = ANY(${sql.array(screeningIds)})`
+              inArray(screeningViews.screeningId, screeningIds)
             )
           );
       } catch (viewError) {

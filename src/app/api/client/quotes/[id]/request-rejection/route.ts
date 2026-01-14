@@ -82,7 +82,7 @@ export async function POST(
     revalidatePath('/my-quotes');
     revalidatePath('/attorney/quotes');
     revalidatePath('/attorney/rejection-requests');
-    revalidatePath(`/completed/${quote.screeningId}`);
+    revalidatePath(`/screenings/${quote.screeningId}`);
 
     return NextResponse.json({ 
       success: true,

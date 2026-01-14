@@ -171,7 +171,7 @@ export default async function ClientDashboard() {
                 <CheckCircle className="h-5 w-5 text-blue-600" />
                 Recent Activity
               </h2>
-              <Link href="/completed">
+              <Link href="/screenings">
                 <Button variant="ghost" size="sm">View All</Button>
               </Link>
             </div>
@@ -195,7 +195,7 @@ export default async function ClientDashboard() {
                         Updated {new Date(screening.updatedAt).toLocaleDateString()}
                       </p>
                     </div>
-                    <Link href={`/completed/${screening.id}`}>
+                    <Link href={`/screenings/${screening.id}`}>
                       <Button size="sm" variant="outline">
                         View
                       </Button>
