@@ -14,12 +14,26 @@ This document provides a comprehensive guide to the visual flow builder system, 
 8. [Screening Integration](#screening-integration)
 9. [API Endpoints](#api-endpoints)
 10. [File Structure](#file-structure)
+11. [Export Format for External Builder](#export-format-for-external-builder)
+12. [React Flow Configuration](#react-flow-configuration)
 
 ---
 
 ## Overview
 
 The flow builder is a visual form/questionnaire system that allows administrators to design conditional logic flows for client intake. Flows are created using a drag-and-drop interface built on [React Flow](https://reactflow.dev/) and are stored as JSON embedded in markdown.
+
+### Recommended Entry Point for Code Review
+
+If you are an AI agent or developer scanning this codebase, start with these files in order:
+
+| Priority | File | Description |
+|----------|------|-------------|
+| 1 | `src/app/admin/flows-editor/[id]/flow-editor-client.tsx` | **Main visual editor** - orchestrates React Flow canvas, sidebars, validation, and save logic |
+| 2 | `src/components/flow-editor/nodes/index.ts` | Node type registry - maps node types to React components |
+| 3 | `src/lib/flow-parser.ts` | Flow parsing logic - converts JSON/markdown to executable flow |
+| 4 | `src/components/flow-renderer.tsx` | Client-side flow execution - renders flows for end users |
+| 5 | `src/types/index.ts` | TypeScript type definitions for flows, nodes, edges |
 
 **Key Capabilities:**
 - Visual drag-and-drop flow design
@@ -849,6 +863,385 @@ When saving from the visual editor, both are updated. When importing, you may ch
 
 - Only update `flows.content` (simpler, editor will rebuild on open)
 - Update all three tables (maintains visual positions)
+
+---
+
+## React Flow Configuration
+
+This section provides detailed React Flow configuration for developers building the external flow builder application.
+
+### Official Documentation Links
+
+- **React Flow Main Docs**: [https://reactflow.dev](https://reactflow.dev)
+- **Custom Nodes**: [https://reactflow.dev/learn/customization/custom-nodes](https://reactflow.dev/learn/customization/custom-nodes)
+- **Handles (Ports)**: [https://reactflow.dev/learn/customization/handles](https://reactflow.dev/learn/customization/handles)
+- **Custom Edges**: [https://reactflow.dev/learn/customization/custom-edges](https://reactflow.dev/learn/customization/custom-edges)
+- **ReactFlow Component API**: [https://reactflow.dev/api-reference/react-flow](https://reactflow.dev/api-reference/react-flow)
+- **Edge Types API**: [https://reactflow.dev/api-reference/types/edge-types](https://reactflow.dev/api-reference/types/edge-types)
+- **Terms & Definitions**: [https://reactflow.dev/learn/concepts/terms-and-definitions](https://reactflow.dev/learn/concepts/terms-and-definitions)
+- **GitHub Repository**: [https://github.com/xyflow/xyflow](https://github.com/xyflow/xyflow)
+- **NPM Package**: [https://www.npmjs.com/package/@xyflow/react](https://www.npmjs.com/package/@xyflow/react)
+
+### Package Installation
+
+```bash
+npm install @xyflow/react
+```
+
+### Core Imports
+
+```typescript
+import {
+  ReactFlow,
+  Background,
+  Controls,
+  MiniMap,
+  Panel,
+  Node,
+  Edge,
+  Connection,
+  NodeChange,
+  EdgeChange,
+  addEdge,
+  useNodesState,
+  useEdgesState,
+  Handle,
+  Position,
+  NodeProps,
+} from '@xyflow/react';
+import '@xyflow/react/dist/style.css';
+```
+
+### ReactFlow Component Configuration
+
+The main `<ReactFlow />` component configuration used in this project:
+
+```tsx
+<ReactFlow
+  nodes={nodes}                    // Node[] - array of node objects
+  edges={edges}                    // Edge[] - array of edge objects
+  onNodesChange={handleNodesChange}  // Callback for node changes (drag, select, remove)
+  onEdgesChange={handleEdgesChange}  // Callback for edge changes
+  onConnect={onConnect}            // Callback when user connects two handles
+  onNodeClick={onNodeClick}        // Callback when node is clicked
+  onPaneClick={onPaneClick}        // Callback when canvas background is clicked
+  onInit={setReactFlowInstance}    // Callback when React Flow initializes
+  onDrop={onDrop}                  // Callback for drag-and-drop from sidebar
+  onDragOver={onDragOver}          // Required for drag-and-drop
+  nodeTypes={nodeTypes}            // Custom node type registry
+  fitView                          // Auto-fit view to show all nodes on load
+  minZoom={0.1}                    // Minimum zoom level
+  maxZoom={2}                      // Maximum zoom level
+  className="bg-background"
+>
+  <Background />                   {/* Grid background pattern */}
+  <Controls />                     {/* Zoom in/out/fit controls */}
+  <MiniMap nodeStrokeWidth={3} />  {/* Mini overview map */}
+  <Panel position="bottom-right">  {/* Custom UI panels */}
+    {nodes.length} nodes • {edges.length} edges
+  </Panel>
+</ReactFlow>
+```
+
+### Node Types Registration
+
+**CRITICAL**: Define `nodeTypes` OUTSIDE the component to prevent infinite re-renders.
+
+```typescript
+// src/components/flow-editor/nodes/index.ts
+
+import StartNode from './StartNode';
+import EndNode from './EndNode';
+import YesNoNode from './YesNoNode';
+import MultipleChoiceNode from './MultipleChoiceNode';
+import TextInputNode from './TextInputNode';
+import DateNode from './DateNode';
+import FormNode from './FormNode';
+import InfoNode from './InfoNode';
+import SuccessNode from './SuccessNode';
+import SubflowNode from './SubflowNode';
+
+// Define outside component - this is important!
+export const nodeTypes = {
+  start: StartNode,
+  end: EndNode,
+  'yes-no': YesNoNode,
+  'multiple-choice': MultipleChoiceNode,
+  text: TextInputNode,
+  date: DateNode,
+  form: FormNode,
+  info: InfoNode,
+  success: SuccessNode,
+  subflow: SubflowNode,
+};
+```
+
+### Custom Node Structure
+
+Custom nodes receive `NodeProps` with access to `id`, `data`, `position`, and more.
+
+```tsx
+// Example: YesNoNode.tsx
+import { memo } from 'react';
+import { Handle, Position, NodeProps } from '@xyflow/react';
+
+export default memo(function YesNoNode({ data }: NodeProps) {
+  return (
+    <div className="node-container">
+      {/* Target handle - where edges connect TO this node */}
+      <Handle
+        type="target"
+        position={Position.Top}
+        className="!w-3 !h-3 !bg-blue-500"
+      />
+
+      {/* Node content */}
+      <div className="node-content">
+        {data.question}
+      </div>
+
+      {/* Source handles - where edges connect FROM this node */}
+      {/* Multiple handles need unique IDs */}
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        id="yes"                              // Unique ID for this handle
+        className="!bg-green-500"
+        style={{ left: '33%' }}
+      />
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        id="no"                               // Unique ID for this handle
+        className="!bg-red-500"
+        style={{ left: '66%' }}
+      />
+    </div>
+  );
+});
+```
+
+### Handle Configuration
+
+Handles are connection points on nodes. Key properties:
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `type` | `'source'` \| `'target'` | Source = outgoing edge start, Target = incoming edge end |
+| `position` | `Position` | `Position.Top`, `Position.Bottom`, `Position.Left`, `Position.Right` |
+| `id` | `string` | Required when node has multiple handles of same type |
+| `isConnectable` | `boolean` | Whether handle accepts connections (default: true) |
+| `style` | `CSSProperties` | Custom positioning and styling |
+
+**Handle IDs Used in This Project:**
+
+| Node Type | Handle IDs |
+|-----------|------------|
+| Start | `source` (default) |
+| End/Success | `target` (default) |
+| Yes/No | `target`, `yes`, `no` |
+| Multiple Choice | `target`, `option-0`, `option-1`, `option-2`, etc. |
+| Text/Date/Form/Info | `target`, `source` (default) |
+| Subflow | `target`, `source` |
+
+### Node Data Structure
+
+Custom data passed to nodes:
+
+```typescript
+interface FormNodeData {
+  label?: string;              // Display name
+  question?: string;           // Question text
+  description?: string;        // Additional description
+
+  // Yes/No specific
+  yesLabel?: string;           // Custom "Yes" button text
+  noLabel?: string;            // Custom "No" button text
+
+  // Multiple choice specific
+  options?: string[];          // Array of option labels
+
+  // Form specific
+  formFields?: FormField[];    // Array of form field configs
+
+  // Text/Date specific
+  placeholder?: string;
+  required?: boolean;
+  defaultValue?: string;
+  fieldName?: string;
+
+  // Subflow specific
+  subflowId?: string;
+
+  // UI state
+  collapsed?: boolean;         // Whether node is visually collapsed
+  highlighted?: boolean;       // Whether node is highlighted (for validation)
+}
+```
+
+### Edge Structure
+
+Edges connect source handles to target handles:
+
+```typescript
+interface FlowEdge {
+  id: string;                  // Unique edge ID
+  source: string;              // Source node ID
+  target: string;              // Target node ID
+  sourceHandle?: string;       // Source handle ID (e.g., 'yes', 'no', 'option-0')
+  targetHandle?: string;       // Target handle ID (usually 'target' or undefined)
+  data?: {
+    label?: string;            // Edge label for display
+  };
+}
+```
+
+### State Management Hooks
+
+React Flow provides built-in hooks for state management:
+
+```typescript
+// Initialize with data from database
+const [nodes, setNodes, onNodesChange] = useNodesState<Node>(initialNodes);
+const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(initialEdges);
+```
+
+### Event Handlers
+
+**IMPORTANT**: Define handlers with `useCallback` to prevent re-render loops.
+
+```typescript
+// Handle new connections
+const onConnect = useCallback(
+  (params: Connection) => {
+    setEdges((eds) => addEdge(params, eds));
+  },
+  [setEdges]
+);
+
+// Handle node position changes
+const handleNodesChange = useCallback(
+  (changes: NodeChange[]) => {
+    onNodesChange(changes);
+    // Track unsaved changes
+    const hasModifications = changes.some(change =>
+      change.type === 'add' ||
+      change.type === 'remove' ||
+      (change.type === 'position' && change.dragging === false)
+    );
+    if (hasModifications) setHasUnsavedChanges(true);
+  },
+  [onNodesChange]
+);
+```
+
+### Drag and Drop from Sidebar
+
+Enable adding nodes by dragging from a component palette:
+
+```typescript
+// Sidebar component sets data on drag start
+const onDragStart = (event: React.DragEvent, nodeType: string) => {
+  event.dataTransfer.setData('application/reactflow', nodeType);
+  event.dataTransfer.effectAllowed = 'move';
+};
+
+// Canvas handles drop
+const onDragOver = useCallback((event: React.DragEvent) => {
+  event.preventDefault();
+  event.dataTransfer.dropEffect = 'move';
+}, []);
+
+const onDrop = useCallback(
+  (event: React.DragEvent) => {
+    event.preventDefault();
+    const type = event.dataTransfer.getData('application/reactflow');
+
+    // Convert screen coordinates to flow coordinates
+    const position = reactFlowInstance.screenToFlowPosition({
+      x: event.clientX,
+      y: event.clientY,
+    });
+
+    const newNode: Node = {
+      id: `${type}-${Date.now()}`,
+      type,
+      position,
+      data: { label: type },
+    };
+
+    setNodes((nds) => nds.concat(newNode));
+  },
+  [reactFlowInstance, setNodes]
+);
+```
+
+### Viewport Control
+
+Programmatic viewport control:
+
+```typescript
+// Get instance on init
+const [reactFlowInstance, setReactFlowInstance] = useState(null);
+
+// Navigate to a specific node
+const navigateToNode = (nodeId: string) => {
+  const node = nodes.find(n => n.id === nodeId);
+  if (node && reactFlowInstance) {
+    reactFlowInstance.setCenter(
+      node.position.x + 150,  // Center offset
+      node.position.y + 50,
+      {
+        zoom: 1.2,
+        duration: 500,  // Animation duration in ms
+      }
+    );
+  }
+};
+
+// Fit view to show all nodes
+reactFlowInstance.fitView({ padding: 0.2 });
+```
+
+### MiniMap Configuration
+
+```tsx
+<MiniMap
+  nodeStrokeWidth={3}
+  nodeColor={(node) => {
+    switch (node.type) {
+      case 'start': return '#22c55e';    // green
+      case 'end': return '#6b7280';      // gray
+      case 'success': return '#22c55e';  // green
+      case 'yes-no': return '#3b82f6';   // blue
+      default: return '#8b5cf6';         // purple
+    }
+  }}
+  className="bg-card"
+/>
+```
+
+### Background Options
+
+```tsx
+<Background
+  variant="dots"           // 'dots' | 'lines' | 'cross'
+  gap={16}                 // Space between pattern elements
+  size={1}                 // Size of pattern elements
+  color="#aaa"             // Pattern color
+/>
+```
+
+### Performance Considerations
+
+1. **Memoize custom nodes** with `memo()` to prevent unnecessary re-renders
+2. **Define `nodeTypes` outside components** - this is critical
+3. **Use `useCallback` for all event handlers**
+4. **Avoid inline styles** where possible
+5. For large flows (100+ nodes), consider:
+   - `nodesDraggable={false}` during bulk operations
+   - Virtualization (handled automatically by React Flow)
+   - Debouncing state updates
 
 ---
 
